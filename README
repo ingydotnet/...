@@ -1,0 +1,57 @@
+... - Dot Dot Dot - Unix dot file management and sharing
+
+== INTRO
+
+"..." is a toolset for managing sets of Unix dot files and configuring
+them for a given machine.
+
+== PREREQUISITES
+
+    * Perl - The `...` command line tool is written in Perl, but
+      requires no external Perl modules. Almost all Unix systems have a
+      perl installed.
+
+      NOTE: I would be happy to see this ported this to Bourne
+            (Again) Shell. Contact me if you are interested in
+            helping with that.
+
+    * Dot Files - You'll need one or more collections of dot files. You
+      can find some on github. Here is a couple examples:
+
+      * git://github.com/ingydotnet/dotdotdot.git
+      * git://github.com/socialtext/stconfig.git
+
+    * git / svn / rsync / scp - Tools to get the dot file collections
+      over to your machine.
+
+
+== INSTALLATION
+
+To install "...", run these commands in your Unix shell:
+
+    > cd $HOME
+    > git clone git://github.com/ingydotnet/....git
+    > cd .../src
+    > # Get collections of dot files from various places
+    > git clone git://github.com/ingydotnet/dotdotdot.git ingy
+    > svn checkout some/svn/dot/file/repo stuff
+    > cd ..
+    > cp conf.example conf
+    > vim conf              # Edit the ... configuration file
+    > ...                   # Show ... help info
+    > ... backup            # Backup your existing dot files
+    > ... install           # Install your new dot files
+
+== CONFIGURATION
+
+Coming soon...
+
+== REVOLUTION
+
+Join the ... revolution. Here's how...
+
+== COPYRIGHT
+
+Copyright 2010 (c) Ingy dot Net.
+
+This stuff is free software. Use it. Feel good. Be somebody, baby.

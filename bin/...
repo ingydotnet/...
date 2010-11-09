@@ -1,0 +1,5 @@
+#!/usr/bin/env perl
+
+my $home = $ENV{HOME} or die "Error: \$HOME not set\n";
+
+
