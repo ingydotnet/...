@@ -44,17 +44,12 @@ To install "...", run these commands in your Unix shell:
     > cd ..
     > cp conf.example conf
     > vim conf              # Edit the ... configuration file
-    > ... -h                # Show ... help info
-    > ... backup            # Backup your existing dot files
-    > ... install           # Install your new dot files
-
-== CONFIGURATION
-
-Coming soon...
-
-== REVOLUTION
-
-Join the ... revolution. Here's how...
+    > cd $HOME
+    > .../bin/... -h        # Show ... help info
+    > .../bin/... backup    # Backup your existing dot files
+    > .../bin/... install   # Install your new dot files
+    > exec bash
+    > ... upgrade
 
 == COPYRIGHT
 
