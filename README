@@ -44,7 +44,7 @@ To install "...", run these commands in your Unix shell:
     > cd ..
     > cp conf.example conf
     > vim conf              # Edit the ... configuration file
-    > ...                   # Show ... help info
+    > ... -h                # Show ... help info
     > ... backup            # Backup your existing dot files
     > ... install           # Install your new dot files
 

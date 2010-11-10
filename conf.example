@@ -9,8 +9,7 @@
 
 # 'dots' is a list of directories that contain dot files. Each entry has
 # a 'path' of the directory, which if relative, is relative to the
-# 'base' value. You can also specify 'from' to tell ... where the dot files
-# come from. Commands like '... update' can 
+# value of 'base', above.
 # 
 # dots:
 # - path: ingy
