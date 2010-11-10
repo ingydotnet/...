@@ -1,0 +1,5 @@
+- Implement backup command.
+- Implement listall command.
+- Implement install command.
+- Implement update command.
+- Implement upgrade command.

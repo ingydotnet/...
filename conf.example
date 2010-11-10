@@ -1,5 +1,30 @@
 # This is the ... config file. Copy this file to ~/.../conf and edit it
-# appropriately.
+# appropriately. This file is in the YAML format.
 
-repo:
-- 
+# 'base' is the base directory for relative paths. If base itself is
+# relative, then it is assumed to be under "$HOME/...". The default
+# value is 'src' which is the same as "$HOME/src/...".
+#
+# base: src
+
+# 'dots' is a list of directories that contain dot files. Each entry has
+# a 'path' of the directory, which if relative, is relative to the
+# 'base' value. You can also specify 'from' to tell ... where the dot files
+# come from. Commands like '... update' can 
+# 
+# dots:
+# - path: ingy
+# - path: socialtext
+
+# 'install' tells ... how to install the dot files. The 3 choices are
+# 'link' (hard link, the default), 'symlink' (a symbolic link to the src
+# file), or 'copy', which copies the src file into $HOME. Each method
+# has advantages.
+#
+# install: link
+
+# 'backup' can be set to 'on' or 'off'. This tells ... whether it should
+# make an automatic backup of your previous dot files when you run '...
+# install'. You can always make a backup explicitly with '... backup'.
+#
+# backup: on
