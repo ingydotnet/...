@@ -17,18 +17,19 @@ them for a given machine.
 
 == PREREQUISITES
 
-    * Perl - The `...` command line tool is written in Perl, but
-      it doesn't require external Perl modules. This shouldn't be a show
-      stopper because almost all Unix systems have a perl installed.
+The `...` comand requires the following standard Unix tools in your PATH:
 
-    * Dot Files - You'll need one or more collections of dot files. You
-      can find some on github. Here is a couple examples:
+    * perl (any old version since 1998)
+    * cpio
 
-      * git://github.com/ingydotnet/dotdotdot.git
-      * git://github.com/socialtext/stconfig.git
+You'll need one or more collections of dot files. Here's a couple I know
+about.
 
-    * git / svn / rsync / scp - Tools to get the dot file collections
-      over to your machine.
+    * git://github.com/ingydotnet/dotdotdot.git
+    * git://github.com/socialtext/stconfig.git
+
+You can round up your own bunch too. (Consider sharing them with the
+public, on a nice place like github.)
 
 
 == INSTALLATION
@@ -40,7 +41,7 @@ To install "...", run these commands in your Unix shell:
     > cd .../src
     > # Get collections of dot files from various places
     > git clone git://github.com/ingydotnet/dotdotdot.git ingy
-    > svn checkout some/svn/dot/file/repo stuff
+    > svn checkout your/svn/dot/file/repo stuff
     > cd ..
     > cp conf.example conf
     > vim conf              # Edit the ... configuration file
