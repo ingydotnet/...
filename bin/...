@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-use XXX;use YAML;use YAML::Loader;
+# use XXX;use YAML;use YAML::Loader;
 # Next line removes site dirs, so we don't pull in non-core modules.
 BEGIN { @INC = grep not(/\bsite/), @INC }
 
