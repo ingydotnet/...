@@ -1,4 +1,8 @@
 #!/usr/bin/env perl
+# use XXX;use YAML;use YAML::Loader;
+# Next line removes site dirs, so we don't pull in non-core modules.
+# BEGIN { @INC = grep not(/\bsite/), @INC }
+
 my $usage = <<'...';
 
                 ... - The Unix Dot File Manager
@@ -23,9 +27,6 @@ Options:
 For complete documentation, run: 'perldoc ...'
 
 ...
-
-# Remove site dirs, so we don't pull in non-core modules.
-BEGIN { @INC = grep not(/\bsite/), @INC }
 
 use strict;
 
@@ -104,9 +105,8 @@ and edit appropriately.
 
     my ($sec, $min, $hour, $day, $mon, $year) = localtime(time);
     $year += 1900;
-    $day++;
     $mon++;
-    $timestamp = "$year$mon$day-$hour$min$sec";
+    $timestamp = sprintf "%04d%02d%02d-%02d%02d%02d", $year, $mon, $day, $hour, $min, $sec;
     my $base = $config->{base} || 'src';
 
     my $dots = $config->{dots}
@@ -127,8 +127,9 @@ and edit appropriately.
         for my $file (`cd $path; find . -type f`) {
             $file =~ s!^\./!!;
             chomp($file);
-            next if $file =~ /^.git\//;
-            $all_files{$file} ||= "$path";
+            next if $file =~ /^\.git\//;
+            next unless $file =~ /^(?:\.|bin\/)/;
+            $all_files{$file} ||= $path;
         }
     }
 }
@@ -145,13 +146,22 @@ sub handle_version {
 
 sub handle_backup {
     my $class = shift;
+    my $quiet = shift or 0;
     my $backup_dir = "$root_dir/backup/$timestamp";
-    print "Backing up your dot files to $backup_dir\n";
+    my $backup_list_file = "$root_dir/tmp/$timestamp-backup-list";
+    open F, "> $backup_list_file";
+    my $n = 0;
     for my $file (sort keys %all_files) {
-        my $path = $all_files{$file};
-        my $command = "cp $home_dir/$file $backup_dir/$file";
-        print "$command\n";
+        next unless -e "$home_dir/$file";
+        $n++;
+        print "$file\n" unless $quiet;
+        print F "$file\n";
     }
+    close F;
+    my $syscmd = "(cd $home_dir; cat $backup_list_file | cpio -dump $backup_dir)";
+    print "> $syscmd\n";
+    system($syscmd) == 0 or die "Error: previous system command failed\n";
+    print "Backed up $n dot files to $backup_dir\n";
 }
 
 sub handle_install {
