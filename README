@@ -1,13 +1,3 @@
-
-
-
-                WARNING: NOT WORKING AT ALL YET!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-
-
-
-
 ... - Dot Dot Dot - Unix dot file management and sharing
 
 == INTRO
@@ -40,8 +30,8 @@ To install "...", run these commands in your Unix shell:
     > git clone git://github.com/ingydotnet/....git
     > cd .../src
     > # Get collections of dot files from various places
-    > git clone git://github.com/ingydotnet/dotdotdot.git ingy
-    > svn checkout your/svn/dot/file/repo stuff
+    > git clone git://github.com/ingydotnet/dotdotdot.git ingydotnet
+    > svn checkout your/svn/dot/file/repo private
     > cd ..
     > cp conf.example conf
     > vim conf              # Edit the ... configuration file
@@ -51,6 +41,22 @@ To install "...", run these commands in your Unix shell:
     > .../bin/... install   # Install your new dot files
     > exec bash
     > ... upgrade
+
+== COMMANDS
+
+    * backup - Make a backup of all the dot files that would be written
+      by the 'install' command.
+    * install - Install all the dot files from the configured source
+      directories. Only install files if the source is different than
+      the destination. Backup the existing files first, unless the
+      auto_backup configuration setting is disabled.
+    * list - List all the source files that would be installed.
+    * update - If ... or its sources are git or svn repositories, then
+      run the commands to bring them all up to date.
+    * upgrade - Same as running update followed by install.
+    * restore - Restore a named backup.
+    * remove - Delete the installed dot files. Make a backup first
+      unless the auto_backup configuration option is disabled.
 
 == COPYRIGHT
 

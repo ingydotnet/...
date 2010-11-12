@@ -26,7 +26,7 @@ Commands:
 
 Options:
     -v --version    Print the version and exit.
-    -h -?           Print this help.
+    -h -?           Print this help and exit.
 
 For complete documentation, run: 'perldoc ...'
 
