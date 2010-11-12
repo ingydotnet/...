@@ -183,7 +183,7 @@ sub handle_install {
         my $dir = $dst;
         $dir =~ s/(.*\/).*/$1/;
         if (not -d $dir) {
-            File::Path::mkpath($dir) == 1 or die "Can't make path '$dir'";
+            File::Path::mkpath($dir) >= 1 or die "Can't make path '$dir'";
         }
         unlink $dst;
         my $cmd =
