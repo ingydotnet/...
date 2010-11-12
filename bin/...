@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
-# use XXX;use YAML;use YAML::Loader;
+use XXX;use YAML;use YAML::Loader;
 # Next line removes site dirs, so we don't pull in non-core modules.
-# BEGIN { @INC = grep not(/\bsite/), @INC }
+BEGIN { @INC = grep not(/\bsite/), @INC }
 
 my $usage = <<'...';
 
@@ -19,6 +19,10 @@ Commands:
     update - Fetch changes from all the dot repositories.
 
     upgrade - Do update and then install.
+
+    restore - Restore a backup.
+
+    remove - DELETE all the dot files in $HOME that would be installed!!!
 
 Options:
     -v --version    Print the version and exit.
@@ -40,9 +44,10 @@ BEGIN {
 
 # Load modules:
 use YAML::Tiny;
-use Getopt::Long;
+use File::Path;
+# use Getopt::Long;
 
-my $VERSION = '0.01';
+my $VERSION = '1.0.0';
 
 # State variables
 my $home_dir;       # $HOME env
@@ -52,8 +57,6 @@ my $root_dir;       # ~/.../
 my $conf_file;      # ~/.../conf
 my $config;         # Config hash
 my $timestamp;      # Time stamp
-my %all_files;      # All dot files involved
-my @dot_dirs;
 
 TOP: {
     my $class = __PACKAGE__;
@@ -103,35 +106,31 @@ and edit appropriately.
 ...
     $config = YAML::Tiny::LoadFile($conf_file);
 
+    $config->{dot_paths_base} ||= 'src';
+
+    die "Error: 'dot_paths' not defined in $conf_file\n"
+        unless defined $config->{dot_paths};
+    die "Error: 'dot_paths' needs to be a sequence of mappings.\n"
+        if ref($config->{dot_paths}) ne 'ARRAY' or
+        not(@{$config->{dot_paths}}) or
+        grep {ref ne 'HASH'} @{$config->{dot_paths}};
+    die "Error: each dot_path entry must have a 'path' value\n"
+        if grep {not defined $_->{path}} @{$config->{dot_paths}};
+
+    $config->{auto_backup} =
+        not(exists($config->{auto_backup})) ? 1 :
+        $config->{auto_backup} =~ /^(on|true|1)$/ ? 1 :
+        $config->{auto_backup} =~ /^(off|false|0)$/ ? 0 :
+        die "Error: invalid value for conf setting 'auto_backup'\n";
+
+    $config->{install_method} ||= 'link';
+    die "Error: invalid value for conf setting 'install_method'\n"
+        unless $config->{install_method} =~ /^(link|symlink|copy)$/;
+
     my ($sec, $min, $hour, $day, $mon, $year) = localtime(time);
     $year += 1900;
     $mon++;
     $timestamp = sprintf "%04d%02d%02d-%02d%02d%02d", $year, $mon, $day, $hour, $min, $sec;
-    my $base = $config->{base} || 'src';
-
-    my $dots = $config->{dots}
-        or die "Error: 'dots' not defined in $conf_file\n";
-    for my $entry (@$dots) {
-        my $path = $entry->{path} or die;
-        if ($path !~ /^\//) {
-            $path = "$base/$path";
-        }
-        if ($path !~ /^\//) {
-            $path = "$root_dir/$path";
-        }
-        die "Error: can't resolve path for '" . $entry->{path} . "'\n"
-            unless $path =~ /^\//;
-        die "Error: '$path' is not a directory\n"
-            unless -d $path;
-        push @dot_dirs, $path;
-        for my $file (`cd $path; find . -type f`) {
-            $file =~ s!^\./!!;
-            chomp($file);
-            next if $file =~ /^\.git\//;
-            next unless $file =~ /^(?:\.|bin\/)/;
-            $all_files{$file} ||= $path;
-        }
-    }
 }
 
 sub handle_help {
@@ -149,49 +148,142 @@ sub handle_backup {
     my $quiet = shift or 0;
     my $backup_dir = "$root_dir/backup/$timestamp";
     my $backup_list_file = "$root_dir/tmp/$timestamp-backup-list";
+    print "Backing up your dot files:\n";
     open F, "> $backup_list_file";
     my $n = 0;
-    for my $file (sort keys %all_files) {
+    for my $file (sort keys %{$class->_all_files}) {
         next unless -e "$home_dir/$file";
         $n++;
         print "$file\n" unless $quiet;
         print F "$file\n";
     }
     close F;
-    my $syscmd = "(cd $home_dir; cat $backup_list_file | cpio -dump $backup_dir)";
-    print "> $syscmd\n";
-    system($syscmd) == 0 or die "Error: previous system command failed\n";
+    my $cmd = "(cd $home_dir; cat $backup_list_file | cpio -dump $backup_dir)";
+    $class->_run_sys($cmd);
     print "Backed up $n dot files to $backup_dir\n";
 }
 
 sub handle_install {
+    my $class = shift;
+    $class->handle_backup('quiet') if $config->{auto_backup};
     print "Installing your dot files:\n";
-    for my $file (sort keys %all_files) {
-        my $path = $all_files{$file};
-        my $command = "cp $path/$file $home_dir/$file";
-        print "$command\n";
+    my $all_files = $class->_all_files;
+    my $method = $config->{install_method};
+    my $n = 0;
+    my $type =
+        $method eq 'copy' ? "f" :
+        $method eq 'link' ? "l" :
+        $method eq 'symlink' ? "s" :
+        die "Invalid install method '$method'";
+    for my $file (sort keys %$all_files) {
+        my $src = "$all_files->{$file}/$file";
+        my $dst = "$home_dir/$file";
+        next if $class->_up_to_date($src, $dst, $type);
+        $n++;
+        my $dir = $dst;
+        $dir =~ s/(.*\/).*/$1/;
+        if (not -d $dir) {
+            File::Path::mkpath($dir) == 1 or die "Can't make path '$dir'";
+        }
+        unlink $dst;
+        my $cmd =
+            $method eq 'copy' ? "cp $src $dst" :
+            $method eq 'link' ? "ln $src $dst" :
+            $method eq 'symlink' ? "ln -s $src $dst" :
+            die "Invalid install method '$method'";
+        $class->_run_sys($cmd);
     }
+    print "Installed $n new dot files\n";
 }
 
 sub handle_list {
     my $class = shift;
-    for my $file (sort keys %all_files) {
-        my $path = $all_files{$file};
+    my $all_files = $class->_all_files;
+    for my $file (sort keys %$all_files) {
+        my $path = $all_files->{$file};
         print "$path/$file\n";
     }
 }
 
 sub handle_update {
     my $class = shift;
-    for my $dir (@dot_dirs) {
-        print "Updating $dir\n";
-    }
+    die "Error: 'update' command not yet implemented\n";
 }
 
 sub handle_upgrade {
     my $class = shift;
+    die "Error: 'upgrade' command not yet implemented\n";
+    print "Updating your `...` system and dot files:\n";
     $class->handle_update;
     $class->handle_install;
+}
+
+sub handle_restore {
+    my $class = shift;
+    $class->handle_backup('quiet') if $config->{auto_backup};
+    die "Error: 'restore' command not yet implemented\n";
+}
+
+sub handle_remove {
+    my $class = shift;
+    $class->handle_backup('quiet') if $config->{auto_backup};
+    print "Removing all your installed dot files:\n";
+    my $all_files = $class->_all_files;
+    my $n = 0;
+    for my $file (sort keys %$all_files) {
+        my $cmd = "unlink $file";
+        $class->_run_sys($cmd);
+        $n++; } print "Deleted $n dot files\n"; }
+
+sub _run_sys {
+    my $class = shift;
+    my $cmd = shift;
+    print "> $cmd\n";
+    system($cmd) == 0 or die "Error: previous system command failed\n";
+}
+
+sub _up_to_date {
+    my $class = shift;
+    my $src = shift;
+    my $dst = shift;
+    my $type = shift;
+    die "Error: '$src' file does not exist" unless -f $src;
+    return 0 if not -e $dst;
+    if (-l $dst) {
+        return 0 if $type =~ /^[fs]/;
+        return readlink($dst) eq $src;
+    }
+    return 0 if -s $dst != -s $src;
+    open S, $src or die;
+    open D, $dst or die;
+    local $/;
+    return <S> eq <D>;
+}
+
+sub _all_files {
+    my $class = shift;
+    my $all_files = {};
+    for my $entry (@{$config->{dot_paths}}) {
+        my $path = $entry->{path};
+        if ($path !~ /^\//) {
+            $path = "$config->{dot_paths_base}/$path";
+        }
+        if ($path !~ /^\//) {
+            $path = "$root_dir/$path";
+        }
+        die "Error: can't resolve path for '" . $entry->{path} . "'\n"
+            unless $path =~ /^\//;
+        die "Error: '$path' is not a directory\n"
+            unless -d $path;
+        for my $file (`(cd $path; find . -type f)`) {
+            $file =~ s!^\./!!;
+            chomp($file);
+            next if $file =~ /^\.git\//;
+            next unless $file =~ /^(?:\.|bin\/)/;
+            $all_files->{$file} ||= $path;
+        }
+    }
+    return $all_files;
 }
 
 =head1 NAME ...
