@@ -316,7 +316,14 @@ sub _all_files {
             $file =~ s!^\./!!;
             chomp($file);
             next if $file =~ /^\.git\//;
-            next unless $file =~ /^(?:\.|bin\/)/;
+            next if $file =~ /^README$/;
+
+            # next unless $file =~ /^(?:\.|bin\/)/;
+            # XXX Temporary Socialtext ignores:
+            next if $file =~ /^Makefile$/;
+            next if $file =~ /\.html$/;
+            next if $file =~ /stconfig-setup$/;
+
             $all_files->{$file} ||= $path;
         }
     }
