@@ -30,7 +30,8 @@ To install "...", run these commands in your Unix shell:
     > git clone git://github.com/ingydotnet/....git
     > cd .../src
     > # Get collections of dot files from various places
-    > git clone git://github.com/ingydotnet/dotdotdot.git ingydotnet
+    > git clone git://github.com/ingydotnet/dotdotdot.git
+    > git clone git://github.com/ingydotnet/ingy-dots.git personal
     > svn checkout your/svn/dot/file/repo private
     > cd ..
     > cp conf.example conf

@@ -14,7 +14,8 @@
 # value of 'dot_paths_base', above.
 # 
 dot_paths:
-- path: ingydotnet
+- path: dotdotdot
+- path: personal
 - path: private
 
 # This tells ... how to install the dot files. The 3 choices are
