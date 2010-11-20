@@ -16,6 +16,8 @@ Commands:
 
     list - List all the full paths of the files that would be installed.
 
+    status - Get change status of all the dot repositories.
+
     update - Fetch changes from all the dot repositories.
 
     upgrade - Do update and then install.
@@ -57,6 +59,7 @@ my $root_dir;       # ~/.../
 my $conf_file;      # ~/.../conf
 my $config;         # Config hash
 my $timestamp;      # Time stamp
+my $restore_from;   # Directory to restore from
 
 TOP: {
     my $class = __PACKAGE__;
@@ -81,6 +84,10 @@ sub parse_command_line {
     }
     else {
         $command = $ARGV[0];
+        if ($command eq 'restore') {
+            $restore_from = splice @ARGV, 1, 1
+                or die "Error: 'restore' command requires a backup directory argument";
+        }
     }
     if (@ARGV > 1) {
         die "Error: invalid usage. Try: '... -h'.\n";
@@ -148,7 +155,7 @@ sub handle_backup {
     my $quiet = shift or 0;
     my $backup_dir = "$root_dir/backup/$timestamp";
     my $backup_list_file = "$root_dir/tmp/$timestamp-backup-list";
-    print "Backing up your dot files:\n";
+    print "Backing up your dot files to $backup_dir/\n";
     open F, "> $backup_list_file";
     my $n = 0;
     for my $file (sort keys %{$class->_all_files}) {
@@ -207,21 +214,39 @@ sub handle_list {
 
 sub handle_update {
     my $class = shift;
-    die "Error: 'update' command not yet implemented\n";
+    print "Updating your `...` system and dot files:\n";
+    for my $dir ($root_dir, $class->_all_dot_paths) {
+        next unless -d "$dir/.git";
+        my $cmd = "(cd $dir; git pull)";
+        $class->_run_sys($cmd);
+    }
+}
+
+sub handle_status {
+    my $class = shift;
+    for my $dir ($root_dir, $class->_all_dot_paths) {
+        next unless -d "$dir/.git";
+        my $cmd = "(cd $dir; git status)";
+        $class->_run_sys($cmd);
+    }
 }
 
 sub handle_upgrade {
     my $class = shift;
-    die "Error: 'upgrade' command not yet implemented\n";
-    print "Updating your `...` system and dot files:\n";
     $class->handle_update;
     $class->handle_install;
 }
 
 sub handle_restore {
     my $class = shift;
+    die "'$restore_from' is not a backup directory"
+        unless -d $restore_from;
+
     $class->handle_backup('quiet') if $config->{auto_backup};
-    die "Error: 'restore' command not yet implemented\n";
+    print "Restoring your dot files from $restore_from\n";
+    my $cmd = "(cd $restore_from; find . | cpio -dump $home_dir)";
+    $class->_run_sys($cmd);
+    print "Restore complete.\n";
 }
 
 sub handle_remove {
@@ -231,9 +256,12 @@ sub handle_remove {
     my $all_files = $class->_all_files;
     my $n = 0;
     for my $file (sort keys %$all_files) {
-        my $cmd = "unlink $file";
+        my $cmd = "rm -f $file";
         $class->_run_sys($cmd);
-        $n++; } print "Deleted $n dot files\n"; }
+        $n++;
+    }
+    print "Deleted $n dot files\n";
+}
 
 sub _run_sys {
     my $class = shift;
@@ -260,9 +288,9 @@ sub _up_to_date {
     return <S> eq <D>;
 }
 
-sub _all_files {
+sub _all_dot_paths {
     my $class = shift;
-    my $all_files = {};
+    my @paths;
     for my $entry (@{$config->{dot_paths}}) {
         my $path = $entry->{path};
         if ($path !~ /^\//) {
@@ -275,6 +303,15 @@ sub _all_files {
             unless $path =~ /^\//;
         die "Error: '$path' is not a directory\n"
             unless -d $path;
+        push @paths, $path;
+    }
+    return @paths;
+}
+
+sub _all_files {
+    my $class = shift;
+    my $all_files = {};
+    for my $path ($class->_all_dot_paths) {
         for my $file (`(cd $path; find . -type f)`) {
             $file =~ s!^\./!!;
             chomp($file);
