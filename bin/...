@@ -327,18 +327,133 @@ sub _all_files {
 
 =head1 NAME ...
 
-Unix dot file management sharing.
+Unix dot file management and sharing
 
 =head1 SYNOPSIS
 
-In the following lines, '> ' is a command line prompt, and '...' is the literal name of this program.
+In the following lines, C<<'> '>> is a command line prompt, and C<'...'>
+is the literal name of this program.
 
+    > ... help                  # Get help
     > ... backup                # Backup your old dot files
-    > ... install 		# Install your dot files
+    > ... list                  # List the source files that will install
+    > ... install               # Install your dot files
     > ... update                # Update your dot files
+    > ... upgrade               # Do update and then install.
     > ... status                # Check status of your dot file repos
+    > ... remove                # Remove all installed dot files
+    > ... restore ~/.../backup/20101112-235947/
 
 =head1 DESCRIPTION
+
+Unix dot files do not get the care they deserve. They quietly make our
+computers work comfortably for us, and yet we toss them about carelessly
+from machine to machine. We make a tweak here and an addition there,
+without keeping them all properly groomed and in sync.
+
+DotDotDot (aka ...) is a toolset for managing sets of Unix dot files and
+configuring them for a given machine. The files usually come from
+various source control repositories (like git or svn). You can use other
+people's repositories, or make your own, or both. You can share your
+repositories with others on hosting sites like GitHub, and also keep you
+private settings in repositories on your private server.
+
+DotDotDot installs a command line program called C<...> (yes, literally
+three period characters). It does all the actions you will need to keep
+your dot files a big happy family.
+
+=head1 PREREQUISITES
+
+The `...` comand requires the following standard Unix tools in your PATH:
+
+    * perl (any old version since 1998)
+    * cat
+    * cp
+    * cpio
+    * rm
+
+You'll need one or more collections of dot files. Here's a few:
+
+    * git://github.com/ingydotnet/dotdotdot.git
+    * git://github.com/ingydotnet/ingy-dots.git
+    * git://github.com/socialtext/stconfig.git
+
+=head1 INSTALLATION
+
+To install "...", run these commands in your Unix shell:
+
+    > cd $HOME
+    > git clone git://github.com/ingydotnet/....git
+    > cd .../src
+    > # Get collections of dot files from various places
+    > git clone git://github.com/ingydotnet/dotdotdot.git
+    > git clone git://github.com/ingydotnet/ingy-dots.git personal
+    > svn checkout your/svn/dot/file/repo private
+    > cd ..
+    > cp conf.example conf
+    > vim conf              # Edit the ... configuration file
+    > cd $HOME
+    > .../bin/... -h        # Show ... help info
+    > .../bin/... backup    # Backup your existing dot files
+    > .../bin/... install   # Install your new dot files
+    > exec bash
+    > ... upgrade
+
+=head1 LINKS
+
+There are 3 possible ways to install your dot files:
+
+    * hardlink to source (default)
+    * symlink to source
+    * copy from source
+
+You can change this with the C<install_method> configuration setting.
+
+Using links is preferable. That way if you change a dot file in your
+home directory, it gets changed in its source repository. Then you can
+push/pull changes upstream, and share them with your other machines and
+with the world.
+
+Hard links are visially quiet, and symlinks are noisy. Your choice. Use
+copy when you don't want changes in $HOME to change files in your repo.
+
+=head1 BACKUPS
+
+DotDotDot has a command to make a backup of all the files it would
+replace on the install command.
+
+If you have the C<auto_backup> option set in your config file (this is
+the default value; you would have to actually turn it off to disable
+it), then DotDotDot will make a backup of your files every time you run
+another command that might change your dot files.
+
+Backups are just timestamp named directories under C<$HOME/.../backup/>.
+Like this:
+
+    /home/ingy/.../backup/20101121-094620
+
+You can restore your dot files from a backup with the
+C<... restore directory-name> command.
+
+=head2 Using Backup to Make a New Repository
+
+If you are new to DotDotDot and want to take your dot files from one
+machine, make them into a repository and share them with your other
+machines, DotDotDot makes that easy. Just follow these steps:
+
+    > ... backup
+    Backed up 69 dot files to /home/ingy/.../backup/20101121-094620
+    > cd ~/...
+    > mv backup/20101121-094620 src/my-dots
+    > # Add C<my-dots> to C<dot_paths> in the C<conf> file.
+    > ... remove    # Delete all your dot files from $HOME
+    > ... install   # Reinstall them (as links!)
+    > cd src/my-dots
+    > git init
+    > git add .
+    > git commit -m 'first commit'
+    > git remote add origin <url-to-upstream-repo>
+    > git push origin master
 
 =head1 AUTHOR
 
@@ -346,7 +461,7 @@ Ingy döt Net <ingy@cpan.org>
 
 =head1 COPYRIGHT
 
-Copyright (c) 2007, 2008, 2010. Ingy döt Net.
+Copyright (c) 2010. Ingy döt Net.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
