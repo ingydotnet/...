@@ -323,9 +323,35 @@ sub _all_files {
     return $all_files;
 }
 
+=encoding utf8
+
 =head1 NAME ...
 
-Unix dot file management.
+Unix dot file management sharing.
+
+=head1 SYNOPSIS
+
+In the following lines, '> ' is a command line prompt, and '...' is the literal name of this program.
+
+    > ... backup                # Backup your old dot files
+    > ... install 		# Install your dot files
+    > ... update                # Update your dot files
+    > ... status                # Check status of your dot file repos
+
+=head1 DESCRIPTION
+
+=head1 AUTHOR
+
+Ingy döt Net <ingy@cpan.org>
+
+=head1 COPYRIGHT
+
+Copyright (c) 2007, 2008, 2010. Ingy döt Net.
+
+This program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.
+
+See http://www.perl.com/perl/misc/Artistic.html
 
 =cut
 
