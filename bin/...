@@ -331,8 +331,8 @@ Unix dot file management and sharing
 
 =head1 SYNOPSIS
 
-In the following lines, C<<'> '>> is a command line prompt, and C<'...'>
-is the literal name of this program.
+NOTE: In the following lines, '> ' is a command line prompt, and
+      C<'...'> is the literal name of this program.
 
     > ... help                  # Get help
     > ... backup                # Backup your old dot files
@@ -351,12 +351,26 @@ computers work comfortably for us, and yet we toss them about carelessly
 from machine to machine. We make a tweak here and an addition there,
 without keeping them all properly groomed and in sync.
 
-DotDotDot (aka ...) is a toolset for managing sets of Unix dot files and
+DotDotDot (aka C<...>) is a toolset for managing sets of Unix dot files and
 configuring them for a given machine. The files usually come from
 various source control repositories (like git or svn). You can use other
 people's repositories, or make your own, or both. You can share your
 repositories with others on hosting sites like GitHub, and also keep you
 private settings in repositories on your private server.
+
+DotDotDot takes these concerns into account:
+
+    * You have multiple machines with varying requirements
+    * Some of your setting are private
+    * You might work as multiple users
+
+DotDotDot is a great way to share settings on an agile development team
+at your work place. When you pair program, you know that you can expect
+common commands to work on a coworker's shell, but both of you can also
+have your personal settings too.
+
+Also, with DotDotDot, you can easy try new groups of settings, and then
+restore to your previous settings when you are done.
 
 DotDotDot installs a command line program called C<...> (yes, literally
 three period characters). It does all the actions you will need to keep
@@ -364,7 +378,7 @@ your dot files a big happy family.
 
 =head1 PREREQUISITES
 
-The `...` comand requires the following standard Unix tools in your PATH:
+The C<...> comand requires the following standard Unix tools in your PATH:
 
     * perl (any old version since 1998)
     * cat
@@ -377,6 +391,9 @@ You'll need one or more collections of dot files. Here's a few:
     * git://github.com/ingydotnet/dotdotdot.git
     * git://github.com/ingydotnet/ingy-dots.git
     * git://github.com/socialtext/stconfig.git
+
+You can also make your own repository from one of your current machine's
+configuration. See below.
 
 =head1 INSTALLATION
 
@@ -454,6 +471,15 @@ machines, DotDotDot makes that easy. Just follow these steps:
     > git commit -m 'first commit'
     > git remote add origin <url-to-upstream-repo>
     > git push origin master
+
+=head1 CREDIT
+
+This work is based on my experience working at Socialtext and their
+"stconfig" common settings: http://github.com/socialtext/stconfig
+
+=head1 AVAILABILITY
+
+This project is currently available at: http://github.com/ingydotnet/...
 
 =head1 AUTHOR
 
