@@ -256,9 +256,14 @@ sub handle_remove {
     my $all_files = $class->_all_files;
     my $n = 0;
     for my $file (sort keys %$all_files) {
-        my $cmd = "rm -f $file";
-        $class->_run_sys($cmd);
-        $n++;
+        if (-e $file) {
+            my $cmd = "rm -f $file";
+            $class->_run_sys($cmd);
+            $n++;
+        }
+        if ((my $dir = $file) =~ s!(.*)/.*!$1!) {
+            rmdir $dir;
+        }
     }
     print "Deleted $n dot files\n";
 }
