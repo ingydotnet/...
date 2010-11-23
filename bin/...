@@ -255,6 +255,7 @@ sub handle_remove {
     print "Removing all your installed dot files:\n";
     my $all_files = $class->_all_files;
     my $n = 0;
+    chdir $home_dir;
     for my $file (sort keys %$all_files) {
         if (-e $file) {
             my $cmd = "rm -f $file";
