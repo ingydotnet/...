@@ -79,6 +79,15 @@ sub parse_command_line {
     elsif ($ARGV[0] =~ /^(-v|--version)$/) {
         $command = 'version'
     }
+    elsif ($ARGV[0] eq 'ls') {
+        $command = 'list'
+    }
+    elsif ($ARGV[0] eq 'st') {
+        $command = 'status'
+    }
+    elsif ($ARGV[0] eq 'rm') {
+        $command = 'remove'
+    }
     elsif ($ARGV[0] =~ /^-/) {
         die "Error: '$ARGV[0]' is an invalid option\n";
     }
