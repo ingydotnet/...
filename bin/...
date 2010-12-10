@@ -351,6 +351,13 @@ sub _all_files {
 
 Unix dot file management and sharing
 
+=head1 QUICK INSTALL
+
+Just run these 2 commands for a basic ... setup. 
+
+    > git clone git://github.com/ingydotnet/....git
+    > ./.../...
+
 =head1 SYNOPSIS
 
 NOTE: In the following lines, '> ' is a command line prompt, and
