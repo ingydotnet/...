@@ -327,7 +327,7 @@ sub _all_files {
     my $class = shift;
     my $all_files = {};
     for my $path ($class->_all_dot_paths) {
-        for my $file (`(cd $path; find . -type f)`) {
+        for my $file (`(cd $path; find . -type f -o -type l)`) {
             $file =~ s!^\./!!;
             chomp($file);
             next if $file =~ /^\.git\//;
