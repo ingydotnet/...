@@ -27,8 +27,7 @@ close $conf;
 open my $conf_sh, "> $ENV{HOME}/.../conf.sh" 
     or die "Couldn't open ~/.../conf.sh for output ($!)";
 print $conf_sh <<"...";
-my
-DOTDOTDOT_ROOT=
-DOTDOTDOT_ORDER=
+export DOTDOTDOT_ROOT='$cwd'
+export DOTDOTDOT_ORDER='${\ join ' ', @paths}'
 ...
 close $conf_sh;
