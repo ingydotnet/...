@@ -15,7 +15,6 @@ if [ -n "$submodules" ]; then
 fi
 
 ln -s "$PWD/..." "$HOME/..."
-cp conf "$HOME/.../conf"
 
 .../.bin/generate-...-conf
 
