@@ -7,23 +7,19 @@ my $usage = <<'...';
 
                 ... - The Unix Dot File Manager
 
-Usage: ... [options] command
+Usage: ... [options] command [command-options]
 
 Commands:
     backup - Backup all the dot files that would be changed by 'install'.
-
     install - Copy or link all the dot files into your $HOME directory.
-
+        -l | --links    Use hardlinks (default)
+        -s | --symlink  Use symlinks
+        -f | --copy     Full copy
     list - List all the full paths of the files that would be installed.
-
     status - Get change status of all the dot repositories.
-
     update - Fetch changes from all the dot repositories.
-
     upgrade - Do update and then install.
-
     restore - Restore a backup.
-
     remove - DELETE all the dot files in $HOME that would be installed!!!
 
 Options:
@@ -47,7 +43,7 @@ BEGIN {
 # Load modules:
 use YAML::Tiny;
 use File::Path;
-# use Getopt::Long;
+use Getopt::Long;
 
 my $VERSION = '1.0.0';
 
@@ -60,6 +56,8 @@ my $conf_file;      # ~/.../conf
 my $config;         # Config hash
 my $timestamp;      # Time stamp
 my $restore_from;   # Directory to restore from
+
+my $cli_install_method = '';
 
 TOP: {
     my $class = __PACKAGE__;
@@ -96,6 +94,20 @@ sub parse_command_line {
         if ($command eq 'restore') {
             $restore_from = splice @ARGV, 1, 1
                 or die "Error: 'restore' command requires a backup directory argument";
+        }
+    }
+    if ($command eq 'install') {
+        if ($ARGV[1] =~ /^(-h|--hardlink)$/) {
+            $cli_install_method = 'hardlink';
+            splice(@ARGV, 1, 1);
+        }
+        if ($ARGV[1] =~ /^(-s|--symlink)$/) {
+            $cli_install_method = 'symlink';
+            splice(@ARGV, 1, 1);
+        }
+        if ($ARGV[1] =~ /^(-f|--copy)$/) {
+            $cli_install_method = 'copy';
+            splice(@ARGV, 1, 1);
         }
     }
     if (@ARGV > 1) {
@@ -184,7 +196,7 @@ sub handle_install {
     $class->handle_backup('quiet') if $config->{auto_backup};
     print "Installing your dot files:\n";
     my $all_files = $class->_all_files;
-    my $method = $config->{install_method};
+    my $method = $cli_install_method || $config->{install_method};
     my $n = 0;
     my $type =
         $method eq 'copy' ? "f" :
@@ -446,7 +458,9 @@ There are 3 possible ways to install your dot files:
     * symlink to source
     * copy from source
 
-You can change this with the C<install_method> configuration setting.
+You can change this with the C<install_method> configuration setting. You can
+also use the C<-l | --link> and C<-s | --symlink> options of the install
+subcommand to override this from the command line.
 
 Using links is preferable. That way if you change a dot file in your
 home directory, it gets changed in its source repository. Then you can
