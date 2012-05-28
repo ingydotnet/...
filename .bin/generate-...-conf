@@ -11,6 +11,7 @@ my $text = do {local $/; <$gitmodules>};
 close $gitmodules or die $!;
 
 my @paths = grep { $_ ne '...' } ($text =~ /^\s+path = (\S+)/mg);
+push @paths, '.';
 
 my $cwd = cwd;
 
@@ -23,8 +24,6 @@ ${\ join "\n", map "- path: $cwd/$_", @paths; }
 # install_method: symlink
 ...
 close $conf;
-
-push @paths, '.'; # TODO: this is for vimrc but needs to be rethought
 
 open my $conf_sh, "> $ENV{HOME}/.../conf.sh" 
     or die "Couldn't open ~/.../conf.sh for output ($!)";
