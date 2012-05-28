@@ -2,8 +2,7 @@
 
 use strict;
 use warnings;
-use Cwd 'abs_path';
-use XXX;
+use Cwd;
 open my $gitmodules, ".gitmodules"
     or die "Can't open ./.gitmodules for input ($!)";
 
@@ -13,11 +12,13 @@ close $gitmodules or die $!;
 
 my @paths = grep { $_ ne '...' } ($text =~ /^\s+path = (\S+)/mg);
 
+my $cwd = cwd;
+
 open my $conf, "> $ENV{HOME}/.../conf"
     or die "Couldn't open ~/.../conf for output ($!)";
 print $conf <<"...";
 dot_paths:
-${\ join "\n", map "- path: $_", @paths; }
+${\ join "\n", map "- path: $cwd/$_", @paths; }
 
 # install_method: symlink
 ...
