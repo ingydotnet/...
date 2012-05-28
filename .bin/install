@@ -1,0 +1,22 @@
+#!/bin/sh -xe
+
+if [ -e "$HOME/..." ]; then
+    echo "$HOME/... already exists"
+    exit 1
+fi
+
+# TODO?: Make this recurse into submodules of submodules
+submodules=`ls -d */.gitmodules 2>/dev/null || true`
+if [ -n "$submodules" ]; then
+    for submodule in "$submodules"; do
+        submodule=`echo $submodule | sed s/.gitmodules//`
+        (cd $submodule; git submodule update --init)
+    done
+fi
+
+ln -s "$PWD/..." "$HOME/..."
+cp conf "$HOME/.../conf"
+
+.../.bin/generate-...-conf
+
+$HOME/.../bin/... install

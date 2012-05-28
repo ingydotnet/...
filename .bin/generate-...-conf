@@ -1,0 +1,33 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use Cwd 'abs_path';
+use XXX;
+open my $gitmodules, ".gitmodules"
+    or die "Can't open ./.gitmodules for input ($!)";
+
+my $text = do {local $/; <$gitmodules>};
+
+close $gitmodules or die $!;
+
+my @paths = grep { $_ ne '...' } ($text =~ /^\s+path = (\S+)/mg);
+
+open my $conf, "> $ENV{HOME}/.../conf"
+    or die "Couldn't open ~/.../conf for output ($!)";
+print $conf <<"...";
+dot_paths:
+${\ join "\n", map "- path: $_", @paths; }
+
+# install_method: symlink
+...
+close $conf;
+
+open my $conf_sh, "> $ENV{HOME}/.../conf.sh" 
+    or die "Couldn't open ~/.../conf.sh for output ($!)";
+print $conf_sh <<"...";
+my
+DOTDOTDOT_ROOT=
+DOTDOTDOT_ORDER=
+...
+close $conf_sh;
