@@ -5,15 +5,11 @@ if [ -e "$HOME/..." ]; then
     exit 1
 fi
 
-git submodule --recursive '
-    [ -e .gitmodules ] && git submodule update --init || true'
+git submodule foreach --recursive \
+    '[ -e .gitmodules ] && git submodule update --init || true'
 
 # Without this, you get subdirs that you can't quickly hack on && commit
-git submodule '
-    git branch _dotdotdot_tmp_
-    git checkout master
-    git merge _dotdotdot_tmp_
-'
+git submodule foreach 'git checkout master'
 
 ln -s "$PWD/..." "$HOME/..."
 
