@@ -24,6 +24,8 @@ ${\ join "\n", map "- path: $cwd/$_", @paths; }
 ...
 close $conf;
 
+push @paths, '.'; # TODO: this is for vimrc but needs to be rethought
+
 open my $conf_sh, "> $ENV{HOME}/.../conf.sh" 
     or die "Couldn't open ~/.../conf.sh for output ($!)";
 print $conf_sh <<"...";
