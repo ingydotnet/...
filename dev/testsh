@@ -1,0 +1,10 @@
+#!/bin/sh -xe
+git commit -am ... || true
+git push || true
+TESTDIR=/tmp/test-dots
+rm -fr $TESTDIR
+mkdir -p $TESTDIR
+cp ../testddd $TESTDIR
+chmod +x $TESTDIR/testddd
+cd $TESTDIR
+HOME=$TESTDIR bash
