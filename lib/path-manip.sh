@@ -1,23 +1,23 @@
-# This bash library contains useful functions for viewing and manipulating
+# This bash/zsh library contains useful functions for viewing and manipulating
 # your PATH environment variable, and other similar environment variables.
 
 # List each directory in your PATH, one per line
 path-list() {
-    local path
+    local path_
     local d
-    if [ "$#" -eq 1 ]; then eval path=\$$1; else path="$PATH"; fi
-    for d in `echo $path | sed -e 's/:/ /g'`; do
+    if [ "$#" -eq 1 ]; then eval path_=\$$1; else path_="$PATH"; fi
+    for d in `echo $path_ | sed -e 's/:/ /g'`; do
         echo "$d"
     done
 }
 
 # Remove a directory from your PATH
 path-remove() {
-    local path
+    local path_
     local d
     local p=""
-    if [ "$#" -eq 2 ]; then eval path=\$$2; else path="$PATH"; fi
-    for d in `echo $path | sed -e 's/:/ /g'`; do
+    if [ "$#" -eq 2 ]; then eval path_=\$$2; else path_="$PATH"; fi
+    for d in `echo $path_ | sed -e 's/:/ /g'`; do
         if [ "$d" != "$1" ]; then
             if [ "$p" = "" ]; then
                 p="$d"
@@ -31,23 +31,23 @@ path-remove() {
 
 # Add a directory to the start of your PATH while removing old references.
 path-prepend() {
-    local path
+    local path_
     path-remove $*
-    if [ "$#" -eq 2 ]; then eval path=\$$2; else path="$PATH"; fi
-    path="$1:$path"
-    if [ "$#" -eq 2 ]; then eval "$2=$path"; else PATH="$path"; fi
+    if [ "$#" -eq 2 ]; then eval path_=\$$2; else path_="$PATH"; fi
+    path_="$1:$path_"
+    if [ "$#" -eq 2 ]; then eval "$2=$path_"; else PATH="$path_"; fi
 }
 
 # Add a directory to the end of your PATH while removing old references.
 path-append() {
-    local path
+    local path_
     path-remove $*
-    if [ "$#" -eq 2 ]; then eval path=\$$2; else path="$PATH"; fi
-    path="$path:$1"
-    if [ "$#" -eq 2 ]; then eval $2=\$path; else PATH="$path"; fi
+    if [ "$#" -eq 2 ]; then eval path_=\$$2; else path_="$PATH"; fi
+    path_="$path_:$1"
+    if [ "$#" -eq 2 ]; then eval $2=\$path_; else PATH="$path_"; fi
 }
 
 # Copyright © 2011 Ingy dot Net <ingy@ingy.net>
-# 
+#
 # This library is free software, distributed under the ISC License.
 # See the LICENSE file distributed with this library.
