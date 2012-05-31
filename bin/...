@@ -10,6 +10,8 @@ my $usage = <<'...';
 Usage: ... [options] command [command-options]
 
 Commands:
+    configure path/to/dots-conf.yaml
+	... can configure itself with this command and a conf file.
     backup - Backup all the dot files that would be changed by 'install'.
     install - Copy or link all the dot files into your $HOME directory.
         -l | --links    Use hardlinks (default)
@@ -44,25 +46,32 @@ BEGIN {
 use YAML::Tiny;
 use File::Path;
 use Getopt::Long;
+use Cwd;
+use File::Spec;
 
 my $VERSION = '1.0.0';
 
 # State variables
-my $home_dir;       # $HOME env
+
+# $HOME env
+my $home_dir = $ENV{HOME} or die "Error: \$HOME not set\n";
 my $command;        # backup, install, etc
 my $handler;        # Class method to call
-my $root_dir;       # ~/.../
-my $conf_file;      # ~/.../conf
+# ~/.../
+my $root_dir = "$home_dir/...";
+# ~/.../conf
+my $conf_file = "$root_dir/conf";
 my $config;         # Config hash
 my $timestamp;      # Time stamp
 my $restore_from;   # Directory to restore from
+my $input_file;
 
 my $cli_install_method = '';
 
 TOP: {
     my $class = __PACKAGE__;
     $class->parse_command_line();
-    $class->setup() unless $command =~ /^(help|version)$/;
+    $class->setup() unless $command =~ /^(help|version|configure)$/;
     $class->$handler();
 }
 
@@ -85,6 +94,11 @@ sub parse_command_line {
     }
     elsif ($ARGV[0] eq 'rm') {
         $command = 'remove'
+    }
+    elsif ($ARGV[0] =~ /^conf(igure)?$/) {
+        $command = 'configure';
+        $input_file = splice(@ARGV, 1, 1)
+            or die "configure requires a dots-conf.yaml file";
     }
     elsif ($ARGV[0] =~ /^-/) {
         die "Error: '$ARGV[0]' is an invalid option\n";
@@ -121,10 +135,7 @@ sub parse_command_line {
 sub setup {
     my $class = shift;
 
-    $home_dir = $ENV{HOME} or die "Error: \$HOME not set\n";
-    $root_dir = "$home_dir/...";
     -d $root_dir or die "Error: $root_dir is not a directory\n";
-    $conf_file = "$root_dir/conf";
     -f $conf_file or die <<"...";
 Error: $conf_file does not exist.
 
@@ -169,6 +180,55 @@ sub handle_help {
 sub handle_version {
     my $class = shift;
     print "This is '...' version '$VERSION'\n\n";
+}
+
+sub handle_configure {
+    my $class = shift;
+    $config = YAML::Tiny::LoadFile($input_file);
+    my @parts = File::Spec->splitpath($input_file);
+    pop @parts;
+    my $dir = Cwd::abs_path(
+        File::Spec->catpath(@parts, File::Spec->updir)
+    );
+    my $array = $class->_determine_config_section($config)
+	or die "Can't determine a config for this environment\n";
+    my @paths;
+    for my $elem (@$array) {
+        my $repo = $elem->{repo} or die;
+        $repo =~ m{.*/(\S+).git$} or die;
+        my $path = File::Spec->catfile($dir, $1);
+        my $cmd = "git clone $repo $path";
+        $class->_run_sys($cmd)
+            unless -e $path;
+        if (-e "$path/.gitmodules") {
+            $cmd = "(cd $path; git submodule update --recursive --init)";
+            $class->_run_sys($cmd);
+        }
+        push @paths, $path;
+    }
+    open CONF, "> $conf_file"
+        or die "Can't open $conf_file for output";
+    print CONF <<"...";
+dot_paths:
+${\ join "\n", map "- path: $_", @paths}
+
+# You can set this to link (default), symlink or copy.
+# install_method: symlink
+...
+    close CONF;
+    print <<"...";
+
+Created $conf_file
+
+Now run this command to install your dot files:
+
+    ~/.../bin/... install
+...
+}
+
+sub _determine_config_section {
+    my ($class, $config) = @_;
+    return $config->{'='};
 }
 
 sub handle_backup {
