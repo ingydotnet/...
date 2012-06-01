@@ -191,7 +191,8 @@ sub handle_configure {
     for my $elem (@$array) {
         my $repo = $elem->{repo} or die;
         $repo =~ m{.*/(\S+).git$} or die;
-        my $path = File::Spec->catdir($root_dir, 'src', $1);
+        my $dir = $1;
+        my $path = File::Spec->catdir($root_dir, 'src', $dir);
         my $cmd = "git clone $repo $path";
         $class->_run_sys($cmd)
             unless -e $path;
@@ -199,7 +200,7 @@ sub handle_configure {
             $cmd = "(cd $path; git submodule update --recursive --init)";
             $class->_run_sys($cmd);
         }
-        push @paths, $path;
+        push @paths, $dir;
     }
     open CONF, "> $conf_file"
         or die "Can't open $conf_file for output";
