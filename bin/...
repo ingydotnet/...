@@ -10,8 +10,6 @@ my $usage = <<'...';
 Usage: ... [options] command [command-options]
 
 Commands:
-    configure path/to/dots-conf.yaml
-	... can configure itself with this command and a conf file.
     backup - Backup all the dot files that would be changed by 'install'.
     install - Copy or link all the dot files into your $HOME directory.
         -l | --links    Use hardlinks (default)
@@ -19,10 +17,13 @@ Commands:
         -f | --copy     Full copy
     list - List all the full paths of the files that would be installed.
     status - Get change status of all the dot repositories.
+    conflicts - Show dot files that collide with ones from other repos
     update - Fetch changes from all the dot repositories.
     upgrade - Do update and then install.
     restore - Restore a backup.
     remove - DELETE all the dot files in $HOME that would be installed!!!
+    configure path/to/dots-conf.yaml
+	... can configure itself with this command and a conf file.
 
 Options:
     -v --version    Print the version and exit.
@@ -289,6 +290,17 @@ sub handle_list {
     }
 }
 
+sub handle_conflicts {
+    my $class = shift;
+    my $all_files = $class->_all_files(1);
+    for my $file (sort keys %$all_files) {
+        my $list = $all_files->{$file};
+        next unless ref($list) eq 'ARRAY';
+        print '= ' . shift(@$list) . "/$file\n";
+        print "  x $_/$file\n" for @$list;
+    }
+}
+
 sub handle_update {
     my $class = shift;
     print "Updating your `...` system and dot files:\n";
@@ -393,6 +405,7 @@ sub _all_dot_paths {
 
 sub _all_files {
     my $class = shift;
+    my $all = shift || 0;
     my $all_files = {};
     for my $path ($class->_all_dot_paths) {
         for my $file (`(cd $path; find . -type f -o -type l)`) {
@@ -400,7 +413,15 @@ sub _all_files {
             chomp($file);
             next if $file =~ /^\.git\//;
             next unless $file =~ /^(?:\.|bin\/)/;
-            $all_files->{$file} ||= $path;
+            if (! $all_files->{$file}) {
+                $all_files->{$file} = $path;
+            }
+            elsif ($all) {
+                my $old = $all_files->{$file};
+                $all_files->{$file} = $old = [$old]
+                    unless ref($old) eq 'ARRAY';
+                push @$old, $path;
+            }
         }
     }
     return $all_files;
