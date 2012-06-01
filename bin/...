@@ -185,18 +185,13 @@ sub handle_version {
 sub handle_configure {
     my $class = shift;
     $config = YAML::Tiny::LoadFile($input_file);
-    my @parts = File::Spec->splitpath($input_file);
-    pop @parts;
-    my $dir = Cwd::abs_path(
-        File::Spec->catpath(@parts, File::Spec->updir)
-    );
     my $array = $class->_determine_config_section($config)
 	or die "Can't determine a config for this environment\n";
     my @paths;
     for my $elem (@$array) {
         my $repo = $elem->{repo} or die;
         $repo =~ m{.*/(\S+).git$} or die;
-        my $path = File::Spec->catfile($dir, $1);
+        my $path = File::Spec->catdir($root_dir, 'src', $1);
         my $cmd = "git clone $repo $path";
         $class->_run_sys($cmd)
             unless -e $path;
