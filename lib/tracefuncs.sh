@@ -1,19 +1,78 @@
-function ...debug {
-    [[ -n "$DOTDOTDOT_TRACE" ]] && echo "…\e[34m$@\e[0m"
+function ...istracing {
+    [[ -n "$DOTDOTDOT_TRACE" ]]
+}
+function ...echo {
+    local ansi_escape=$1
+    shift
+    ...istracing && echo "…\e[${ansi_escape}m$@\e[0m"
 }
 
-# I bet there's a far better way to do this. -rking
+
+function ...echo_red {
+    ...echo 31 "$@"
+}
+function ...echo_green {
+    ...echo 32 "$@"
+}
+function ...echo_yellow {
+    ...echo 33 "$@"
+}
+function ...echo_blue {
+    ...echo 34 "$@"
+}
+function ...echo_cyan {
+    ...echo 36 "$@"
+}
+function ...echo_purple {
+    ...echo 35 "$@"
+}
+function ...echo_green {
+    ...echo 35 "$@"
+}
+
+function ...debug {
+    ...istracing && ...echo_blue "$@"
+}
+function ...debug2 {
+    ...istracing && ...echo_cyan "$@"
+}
+function ...debug3 {
+    ...istracing && ...echo_purple "$@"
+}
+function ...debug4 {
+    ...istracing && ...echo_green "$@"
+}
+
+function ...info {
+    ...echo_green "$@"
+}
+function ...warn {
+    ...echo_yellow "$@"
+}
+function ...ohno {
+    ...echo_red "$@"
+}
+
+function ...die {
+    ...ohno "$@"
+    exit 86
+}
+
+# I bet there's a way to do this without requiring $0 to be passed in. -rking
 function ...filestart {
-    [[ -n "$DOTDOTDOT_TRACE" ]] && echo "…\e[32mSTART:$@\e[0m"
+    ...istracing && ...echo 32 "START:$@"
 }
 function ...fileend {
-    [[ -n "$DOTDOTDOT_TRACE" ]] && echo "…\e[32mEND:$@\e[0m"
+    ...istracing && ...echo 32 "END:$@"
 }
-
 
 function ...trace {
-    ( export DOTDOTDOT_TRACE=1; "$@")
+    export DOTDOTDOT_TRACE=1
 }
-function ...tracesh { ## Eliminates the "subshell exit" step when rapid-testing.
-    ...trace $SHELL -i -c exit
+function ...notrace {
+    unset DOTDOTDOT_TRACE
+}
+function ...tracesh {
+    ...trace ${CURRENTSHELL:-SHELL} -i -c 'echo In subshell, SHLVL=$SHLVL'
+    ...info "(Back in original shell, SHLVL=$SHLVL)"
 }
