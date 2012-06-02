@@ -73,6 +73,6 @@ function ...notrace {
     unset DOTDOTDOT_TRACE
 }
 function ...tracesh {
-    ...trace ${CURRENTSHELL:-SHELL} -i -c 'echo In subshell, SHLVL=$SHLVL'
+    ...trace ${SHELLNAME:-$SHELL} -i -c 'echo In subshell, SHLVL=$SHLVL'
     ...info "(Back in original shell, SHLVL=$SHLVL)"
 }

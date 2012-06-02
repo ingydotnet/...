@@ -9,16 +9,30 @@ path-prepend ~/bin
 eval `... env`
 ...debug3 "Did eval `... env`"
 
-export SHELLNAME=${SHELL##*/}
+if [ -n "$ZSH_VERSION" ]; then
+    export SHELLNAME=zsh
+elif [ -n "$BASH_VERSION" ]; then
+    export SHELLNAME=bash
+else
+    export SHELLNAME=${SHELL##*/}
+fi
+
+sourcedircontents() {
+    d=$1
+    [ -d $d ] || return
+    for n in $d/*; do
+        if [[ -d $n ]]; then
+            ...debug2 "(Skipping $n because it's a directory)"
+        else
+            ...debug "Sourcing $n"
+            source $n
+        fi
+    done
+}
 
 # Everything in ~/.sh and ~/.zsh (or ~/.bash)
-for n in ~/.sh/* ~/.$SHELLNAME/*; do
-    if [[ -d $n ]]; then
-        ...debug2 "(Skipping $n because it's a directory)"
-    else
-        ...debug "Sourcing $n"
-        source $n
-    fi
+for n in ~/.sh ~/.$SHELLNAME; do
+    sourcedircontents $n
 done
 
 # Then each dots-repo's .zshrc (or .bashrc)
