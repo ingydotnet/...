@@ -187,8 +187,8 @@ sub handle_version {
 sub handle_env {
     my $class = shift;
     print <<EOT
-# See http://github.com/ingydotnet/boot-dots for ideas on how to use these
-DOTDOTDOT_ROOT='$root_dir!'
+: See http://github.com/ingydotnet/boot-dots for ideas on how to use these;
+DOTDOTDOT_ROOT='$root_dir'
 DOTDOTDOT_ORDER='${\ join ' ', $class->_all_dot_paths}'
 EOT
 }
