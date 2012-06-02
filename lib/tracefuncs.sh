@@ -4,7 +4,7 @@ function ...istracing {
 function ...echo {
     local ansi_escape=$1
     shift
-    ...istracing && echo "…\e[${ansi_escape}m$@\e[0m"
+    ...istracing && echo -e "…\e[${ansi_escape}m$@\e[0m"
 }
 
 
@@ -67,7 +67,7 @@ function ...fileend {
 }
 
 function ...trace {
-    export DOTDOTDOT_TRACE=1
+    ( export DOTDOTDOT_TRACE=1; "$@" )
 }
 function ...notrace {
     unset DOTDOTDOT_TRACE
