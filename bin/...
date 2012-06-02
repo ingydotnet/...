@@ -24,6 +24,7 @@ Commands:
     remove - DELETE all the dot files in $HOME that would be installed!!!
     configure path/to/dots-conf.yaml
 	... can configure itself with this command and a conf file.
+    env - Get input for a shell eval `... env`, useful for scripting.
 
 Options:
     -v --version    Print the version and exit.
@@ -183,6 +184,15 @@ sub handle_version {
     print "This is '...' version '$VERSION'\n\n";
 }
 
+sub handle_env {
+    my $class = shift;
+    print <<EOT
+# See http://github.com/ingydotnet/boot-dots for ideas on how to use these
+DOTDOTDOT_ROOT='$root_dir!'
+DOTDOTDOT_ORDER='${\ join ' ', $class->_all_dot_paths}'
+EOT
+}
+
 sub handle_configure {
     my $class = shift;
     $config = YAML::Tiny::LoadFile($input_file);
@@ -191,7 +201,7 @@ sub handle_configure {
     my @paths;
     for my $elem (@$array) {
         my $repo = $elem->{repo} or die;
-        $repo =~ m{.*/(\S+).git$} or die;
+        $repo =~ m{.*/(\S+).git$} or die "'$repo' doesn't have trailing .git";
         my $dir = $1;
         my $path = File::Spec->catdir($root_dir, 'src', $dir);
         my $cmd = "git clone $repo $path";
