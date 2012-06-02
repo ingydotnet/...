@@ -421,7 +421,7 @@ sub _all_files {
         for my $file (`(cd $path; find . -type f -o -type l)`) {
             $file =~ s!^\./!!;
             chomp($file);
-            next if $file =~ /^\.git\//;
+            next if $file =~ /^\.git\/|(\.sw.|~)$/;
             next unless $file =~ /^(?:\.|bin\/)/;
             if (! $all_files->{$file}) {
                 $all_files->{$file} = $path;
