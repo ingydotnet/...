@@ -2,3 +2,5 @@ backup
 conf
 conf.sh
 tmp
+src
+*.sw?
