@@ -37,7 +37,7 @@ done
 
 # Then each dots-repo's .zshrc (or .bashrc)
 for n in `echo $DOTDOTDOT_ORDER`; do
-    local rc=$n/.${SHELLNAME}rc
+    rc=$n/.${SHELLNAME}rc
     if [[ -e $rc ]]; then
         if grep 'source .*/\.\.\./lib/common.sh' $rc 2>&1 >/dev/null; then
             ...debug2 "(Wisely skipping $rc, to prevent a loop.)"
