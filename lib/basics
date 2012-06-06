@@ -1,6 +1,6 @@
-eval `... env`
+eval `~/.../bin/... env`
 source $DOTDOTDOT_ROOT/lib/tracefuncs
-...debug2 "Did eval `... env`, producing: `... env`"
+# ...debug2 "Did eval `... env`, producing: `... env`"
 
 source $DOTDOTDOT_ROOT/lib/scripting
 source $DOTDOTDOT_ROOT/lib/path-manip
