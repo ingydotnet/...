@@ -1,0 +1,19 @@
+#!/bin/sh
+
+prep-test() {
+  SHUNIT_PARENT=$1
+  if [ -n "$ZSH_VERSION" ]; then
+    setopt shwordsplit
+  fi
+}
+
+cdtmp() {
+    TMP=`pwd`/t/tmp
+    rm -rf $TMP
+    mkdir $TMP
+    cd $TMP
+}
+cleantmp() {
+    rm -rf $TMP
+    cd ../..
+}

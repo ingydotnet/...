@@ -1,0 +1,57 @@
+source ~/.../lib/tracefuncs
+function ...repos {
+    cd ~/.../src
+}
+alias ...src=...repos # This name is a bit confusing vs. ...source, but hey.
+
+# These next funcs are copy&pasted. Fix soon. -rking
+function ...each {
+    (
+        for dir in `echo $DOTDOTDOT_ORDER`; do
+            ...info "[In $dir]"
+            ( builtin cd $dir; eval "$@" )
+        done
+    )
+}
+function ...quieteach {
+    (
+        for dir in `echo $DOTDOTDOT_ORDER`; do
+            ( builtin cd $dir; eval "$@" )
+        done
+    )
+}
+
+# By using this you get ...trace abilities, plus it guards against recursion
+function ...source {
+    if [[ "${1%%*boot-dots*}" == "$1" ]]; then
+        ...filestart "$1"
+        source $@
+        ...fileend "$@"
+    else
+        ...debug2 "(Wisely skipping $1, to prevent a loop.)"
+    fi
+}
+function ...sourceif {
+    # Quietly fails if it doesn't find the file (unless you ...traceon). Be a
+    # bit careful with it.
+    if [ -e $1 ]; then
+        ...source "$@"
+    else
+        ...debug3 "($1 didn't exist in `pwd`, skipping.)"
+    fi
+}
+alias sourceif=...sourceif # Backwards compatibility.
+
+...sourcedircontents() {
+    d=$1
+    [ -d $d ] || return
+    for n in $d/*; do
+        if [[ -d $n ]]; then
+            ...debug2 "(Skipping $n because it's a directory)"
+        else
+            ...debug "Sourcing $n"
+            source $n
+        fi
+    done
+}
+# vim:ft=zsh

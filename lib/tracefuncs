@@ -1,0 +1,106 @@
+function ...istracing {
+    [[ -n "$DOTDOTDOT_TRACE" ]]
+}
+function ...ansiecho {
+    local ansi_escape=$1
+    shift
+    echo -e "$DOTDOTDOT_TRACE_INDENT…\e[${ansi_escape}m$@\e[0m"
+}
+
+function ...echo_red {
+    ...ansiecho 31 "$@"
+}
+function ...echo_green {
+    ...ansiecho 32 "$@"
+}
+function ...echo_yellow {
+    ...ansiecho 33 "$@"
+}
+function ...echo_blue {
+    ...ansiecho 34 "$@"
+}
+function ...echo_cyan {
+    ...ansiecho 36 "$@"
+}
+function ...echo_purple {
+    ...ansiecho 35 "$@"
+}
+
+function ...debug {
+    ...istracing && ...echo_blue "$@"
+}
+function ...debug2 {
+    ...istracing && ...echo_cyan "$@"
+}
+function ...debug3 {
+    ...istracing && ...echo_purple "$@"
+}
+function ...debug4 {
+    ...istracing && ...echo_green "$@"
+}
+
+function ...info {
+    ...echo_green "$@"
+}
+function ...warn {
+    ...echo_yellow "$@"
+}
+function ...ohno {
+    ...echo_red "$@"
+}
+
+function ...die {
+    ...ohno "$@"
+    exit 86
+}
+
+...trace-indent() {
+    DOTDOTDOT_TRACE_INDENT="  $DOTDOTDOT_TRACE_INDENT"
+}
+...trace-outdent() {
+    DOTDOTDOT_TRACE_INDENT="${DOTDOTDOT_TRACE_INDENT#  }"
+}
+
+# I bet there's a way to do this without requiring $0 to be passed in. -rking
+function ...filestart {
+    ...debug3 "START: $@"
+    ...trace-indent
+}
+function ...fileend {
+    ...trace-outdent
+    ...debug3 "END: $@"
+}
+
+function ...traceon {
+    export DOTDOTDOT_TRACE=1; set -x
+}
+function ...traceoff {
+    unset DOTDOTDOT_TRACE; set +x
+}
+function ...trace {
+    (
+        ...traceon
+        DOTDOTDOT_TRACE_INDENT=''
+        echo "Tracing [${${@:-$SHELLNAME}:-$SHELL}]"
+        ${${@:-$SHELLNAME}:-$SHELL}
+        ...info "(Back in original shell, SHLVL=$SHLVL)"
+    ) # TODO: 2>&1 | less --quit-if-one-screen --raw-control-chars
+}
+function ...traceq { ## trace shell and quit
+    ...trace $SHELLNAME "$@" -c 'echo in subshell, SHLVL=$SHLVL'
+}
+function ...tracex {
+    ...traceq "$@" -x
+}
+# On these next ones, don't forget about calling with -x for more loudness:
+function ...tracei { ## "interactive"
+    ...traceq "$@" -i # TODO: verify that this works.
+}
+function ...tracel { ## "login"
+    ...traceq "$@" -l # TODO: verify that this works.
+}
+function ...tracef { ## zsh has this as --no-rcs
+    ...traceq "$@" -f # TODO: verify that this works.
+}
+
+# vim:ft=zsh
