@@ -61,14 +61,20 @@ function ...die {
     DOTDOTDOT_TRACE_INDENT="${DOTDOTDOT_TRACE_INDENT#  }"
 }
 
+...fully-qualify() {
+    local fn="$@"
+    [[ ${fn:0:1} != / ]] && fn=`pwd`/$fn
+    echo $fn
+}
+
 # I bet there's a way to do this without requiring $0 to be passed in. -rking
 function ...filestart {
-    ...debug3 "START: $@"
+    ...debug4 "START → \e[0m`...fully-qualify $@`"
     ...trace-indent
 }
 function ...fileend {
     ...trace-outdent
-    ...debug3 "END: $@"
+    ...debug3 "END   ← \e[0m`...fully-qualify $@`"
 }
 
 function ...traceon {

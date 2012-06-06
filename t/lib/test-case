@@ -1,10 +1,10 @@
 #!/bin/sh
 
-prep-test() {
-  SHUNIT_PARENT=$1
-  if [ -n "$ZSH_VERSION" ]; then
-    setopt shwordsplit
-  fi
+prep-tests() {
+    SHUNIT_PARENT=$1
+    if [ -n "$ZSH_VERSION" ]; then
+        setopt shwordsplit
+    fi
 }
 
 cdtmp() {

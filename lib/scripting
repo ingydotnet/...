@@ -1,8 +1,19 @@
-source ~/.../lib/tracefuncs
-function ...repos {
-    cd ~/.../src
+source $DOTDOTDOT_ROOT/lib/tracefuncs
+function ...repo {
+    if [ -z "$1" ]; then
+        cd "$DOTDOTDOT_ROOT/src"
+        return
+    fi
+    if [ -e "$DOTDOTDOT_ROOT/src/$1" ]; then
+        cd "$1"
+    elif [ -e "$DOTDOTDOT_ROOT/src/$1-dots" ]; then
+        cd "$DOTDOTDOT_ROOT/src/$1-dots"
+    else
+        echo "Hrm. Not sure what to do with \`$1\`."
+        cd "$DOTDOTDOT_ROOT/src"
+    fi
 }
-alias ...src=...repos # This name is a bit confusing vs. ...source, but hey.
+alias ...src=...repo # "...src" is a bit confusing vs. "...source", but hey.
 
 # These next funcs are copy&pasted. Fix soon. -rking
 function ...each {
@@ -23,12 +34,15 @@ function ...quieteach {
 
 # By using this you get ...trace abilities, plus it guards against recursion
 function ...source {
-    if [[ "${1%%*boot-dots*}" == "$1" ]]; then
+    local fullname="`pwd`/$1"
+    if expr "$fullname" : ".*boot-dots" > /dev/null; then
+        ...debug2 "(Wisely skipping $fullname, to prevent a loop.)"
+    elif expr "$1" : ".*\\.sw.$" > /dev/null; then
+        ...debug2 "(Skipping $1, which appears to be a vim swapfile.)"
+    else
         ...filestart "$1"
         source $@
         ...fileend "$@"
-    else
-        ...debug2 "(Wisely skipping $1, to prevent a loop.)"
     fi
 }
 function ...sourceif {
@@ -37,7 +51,7 @@ function ...sourceif {
     if [ -e $1 ]; then
         ...source "$@"
     else
-        ...debug3 "($1 didn't exist in `pwd`, skipping.)"
+        ...debug3 "No $1 in \e[0m`pwd`"
     fi
 }
 alias sourceif=...sourceif # Backwards compatibility.
@@ -49,8 +63,7 @@ alias sourceif=...sourceif # Backwards compatibility.
         if [[ -d $n ]]; then
             ...debug2 "(Skipping $n because it's a directory)"
         else
-            ...debug "Sourcing $n"
-            source $n
+            ...source $n
         fi
     done
 }

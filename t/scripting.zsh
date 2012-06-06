@@ -1,14 +1,17 @@
 #!/bin/zsh
-
 source t/lib/test-case
 source lib/scripting
 
 testFullPath() {
-    assertEquals foo $(...source `pwd`/t/echo-foo)
+    assertEquals foo "$(...source `pwd`/t/echo-foo)"
 }
 
 testRelative() {
-    assertEquals foo $(...source t/echo-foo)
+    assertEquals foo "$(...source t/echo-foo)"
+}
+
+testRecursionGuard() {
+    assertEquals '' "`...source boot-dots/anything 2>&1`"
 }
 
 testSourceif() {
@@ -43,5 +46,5 @@ testEach() {
     cleantmp
 }
 
-prep-test $0
+prep-tests $0
 . t/lib/shunit2/src/shunit2

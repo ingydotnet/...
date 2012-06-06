@@ -1,0 +1,10 @@
+if [ -n "$ZSH_VERSION" ]; then
+    export SHELLNAME=zsh
+elif [ -n "$BASH_VERSION" ]; then
+    export SHELLNAME=bash
+else
+    echo "This shell isn't known to $DOTDOTDOT_ROOT/lib/set-shellname"
+    echo "(Please add it and send a Pull Request.)"
+    export SHELLNAME=${SHELL##*/}
+fi
+# vim:ft=sh
