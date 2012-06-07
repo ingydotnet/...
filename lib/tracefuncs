@@ -87,8 +87,10 @@ function ...trace {
     (
         ...traceon
         DOTDOTDOT_TRACE_INDENT=''
-        echo "Tracing [${${@:-$SHELLNAME}:-$SHELL}]"
-        ${${@:-$SHELLNAME}:-$SHELL}
+        local cmd="${@:-$SHELLNAME}"
+        cmd="${cmd:-$SHELL}"
+        echo "Tracing [$cmd]"
+        $cmd
         ...info "(Back in original shell, SHLVL=$SHLVL)"
     ) # TODO: 2>&1 | less --quit-if-one-screen --raw-control-chars
 }
