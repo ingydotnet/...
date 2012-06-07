@@ -31,6 +31,10 @@ function ...quieteach {
         done
     )
 }
+...EACH() {(
+    DOTDOTDOT_ORDER="$HOME/... $HOME/.dots-conf $DOTDOTDOT_ORDER"
+    ...each "$@"
+)}
 
 # By using this you get ...trace abilities, plus it guards against recursion
 function ...source {
