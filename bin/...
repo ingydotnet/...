@@ -258,9 +258,34 @@ sub handle_backup {
     print "Backed up $n dot files to $backup_dir\n";
 }
 
+sub handle_dots_install {
+    my $class = shift;
+    $class->_each_make('install');
+}
+
+sub handle_dots_deps {
+    my $class = shift;
+    $class->_each_make('deps');
+}
+
+sub _each_make {
+    my ($class, $target) = @_;
+    for my $dots_dir ($class->_all_dot_paths) {
+        my $dots_makefile = "$dots_dir/...Makefile";
+        next if not -e $dots_makefile;
+        $ENV{DOTDOTDOT_ROOT} = $root_dir;
+        # Should we hack together an internal make-like fallback if the user
+        # doesn't have actual `make`? -rking
+        $class->_run_sys(
+            'make', '-C', $dots_dir, '-f', $dots_makefile, $target);
+    }
+}
+
 sub handle_install {
     my $class = shift;
     $class->handle_backup('quiet') if $config->{auto_backup};
+    $class->handle_dots_install();
+    $class->handle_dots_deps();
     print "Installing your dot files:\n";
     my $all_files = $class->_all_files;
     my $method = $cli_install_method || $config->{install_method};
@@ -368,11 +393,19 @@ sub handle_remove {
     print "Deleted $n dot files\n";
 }
 
+sub fatal_error {
+    my $msg = shift;
+    die "$msg\n" unless -t STDERR;
+    warn "...\e[31;1m$msg\e[0m\n";
+    print STDERR "  Hit Enter to try to continue anyway, or Ctrl+c to stop:";
+    <STDIN>;
+}
+
 sub _run_sys {
-    my $class = shift;
-    my $cmd = shift;
-    print "> $cmd\n";
-    system($cmd) == 0 or die "Error: previous system command failed\n";
+    my ($class, @cmd) = @_;
+    local $" = ' ';
+    print "> @cmd\n";
+    system(@cmd) == 0 or fatal_error "Failed to: @cmd";
 }
 
 sub _up_to_date {
