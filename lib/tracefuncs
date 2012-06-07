@@ -87,8 +87,14 @@ function ...trace {
     (
         ...traceon
         DOTDOTDOT_TRACE_INDENT=''
-        local cmd="${@:-$SHELLNAME}"
-        cmd="${cmd:-$SHELL}"
+        local cmd=''
+        if [ -n "$@" ]; then
+            cmd="$@"
+        elif [ -n "$SHELLNAME" ]; then
+            cmd="$SHELLNAME"
+        else
+            cmd="$SHELL"
+        fi
         echo "Tracing [$cmd]"
         $cmd
         ...info "(Back in original shell, SHLVL=$SHLVL)"
