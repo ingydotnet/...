@@ -19,7 +19,7 @@ testQuietVsVerbose() {
 
 testTracex() {
     local r="`...tracex 2>&1`"
-    local m=`expr "$r" : '.*START:'`
+    local m=`expr "$r" : '.*START'`
     assertNotEquals "$r" 0 $m
 }
 
