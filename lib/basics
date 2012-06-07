@@ -6,7 +6,6 @@ source $DOTDOTDOT_ROOT/lib/scripting
 source $DOTDOTDOT_ROOT/lib/path-manip
 
 ...filestart "$DOTDOTDOT_ROOT/lib/basics" # Bash won't let me use "$0" here.
-...source $DOTDOTDOT_ROOT/lib/ # ...repos and ...each
 ...source $DOTDOTDOT_ROOT/lib/path-manip
 ...path-prepend $DOTDOTDOT_ROOT/bin
 ...path-prepend ~/bin
