@@ -34,7 +34,7 @@ function ...quieteach {
 
 # By using this you get ...trace abilities, plus it guards against recursion
 function ...source {
-    local fullname="`pwd`/$1"
+    local fullname="`...fully-qualify $1`"
     if expr "$fullname" : ".*boot-dots" > /dev/null; then
         ...debug2 "(Wisely skipping $fullname, to prevent a loop.)"
     elif expr "$1" : ".*\\.sw.$" > /dev/null; then
