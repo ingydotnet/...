@@ -201,11 +201,11 @@ sub handle_configure {
     my @paths;
     for my $elem (@$array) {
         my $repo = $elem->{repo} or die;
-        my $branch = $elem->{repo} ? "--branch $elem->{repo}" : '';
+        my $branch = $elem->{branch} ? "--branch $elem->{branch} " : '';
         $repo =~ m{.*/(\S+).git$} or die "'$repo' doesn't have trailing .git";
         my $dir = $1;
         my $path = File::Spec->catdir($root_dir, 'src', $dir);
-        my $cmd = "git clone $branch $repo $path";
+        my $cmd = "git clone $branch$repo $path";
         $class->_run_sys($cmd)
             unless -e $path;
         if (-e "$path/.gitmodules") {
