@@ -1,4 +1,5 @@
-eval `~/.../bin/... env`
+PATH="$HOME/.../bin:$PATH" # needed to bootsrap
+eval `... env`
 source ~/.../lib/tracefuncs
 ...debug2 "Did eval `... env`, producing: `... env`"
 
