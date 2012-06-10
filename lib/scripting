@@ -1,16 +1,16 @@
-source $DOTDOTDOT_ROOT/lib/tracefuncs
+source ~/.../lib/tracefuncs
 function ...repo {
     if [ -z "$1" ]; then
-        cd "$DOTDOTDOT_ROOT/src"
+        cd "~/.../src"
         return
     fi
-    if [ -e "$DOTDOTDOT_ROOT/src/$1" ]; then
+    if [ -e "~/.../src/$1" ]; then
         cd "$1"
-    elif [ -e "$DOTDOTDOT_ROOT/src/$1-dots" ]; then
-        cd "$DOTDOTDOT_ROOT/src/$1-dots"
+    elif [ -e "~/.../src/$1-dots" ]; then
+        cd "~/.../src/$1-dots"
     else
         echo "Hrm. Not sure what to do with \`$1\`."
-        cd "$DOTDOTDOT_ROOT/src"
+        cd "~/.../src"
     fi
 }
 alias ...src=...repo # "...src" is a bit confusing vs. "...source", but hey.

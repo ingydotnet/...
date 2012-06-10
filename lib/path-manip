@@ -1,7 +1,7 @@
 # This bash/zsh library contains useful functions for viewing and manipulating
 # your PATH environment variable, and other similar environment variables.
 
-source $DOTDOTDOT_ROOT/lib/tracefuncs
+source ~/.../lib/tracefuncs
 
 # List each directory in your PATH, one per line
 ...path-list() {

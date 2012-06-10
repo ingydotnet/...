@@ -1,18 +1,16 @@
-export DOTDOTDOT_ROOT=${DOTDOTDOT_ROOT:-$HOME/...}
-
 eval `~/.../bin/... env`
-source $DOTDOTDOT_ROOT/lib/tracefuncs
+source ~/.../lib/tracefuncs
 ...debug2 "Did eval `... env`, producing: `... env`"
 
-source $DOTDOTDOT_ROOT/lib/scripting
-source $DOTDOTDOT_ROOT/lib/path-manip
+source ~/.../lib/scripting
+source ~/.../lib/path-manip
 
-...filestart "$DOTDOTDOT_ROOT/lib/basics" # Bash won't let me use "$0" here.
-...source $DOTDOTDOT_ROOT/lib/path-manip
-...path-prepend $DOTDOTDOT_ROOT/bin
+...filestart "~/.../lib/basics" # Bash won't let me use "$0" here.
+...source ~/.../lib/path-manip
+...path-prepend ~/.../bin
 ...path-prepend ~/bin
 
-...source $DOTDOTDOT_ROOT/lib/set-shellname # makes $SHELLNAME = "zsh" or "bash"
+...source ~/.../lib/set-shellname # makes $SHELLNAME = "zsh" or "bash"
 
-...fileend "$DOTDOTDOT_ROOT/lib/basics"
+...fileend "~/.../lib/basics"
 # vim:ft=zsh
