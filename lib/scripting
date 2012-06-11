@@ -1,3 +1,5 @@
+source ~/.../lib/assert-decent-shell || return
+
 source "$HOME/.../lib/tracefuncs"
 function ...repo {
     if [ -z "$1" ]; then

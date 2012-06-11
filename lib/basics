@@ -1,3 +1,5 @@
+source ~/.../lib/assert-decent-shell || return
+
 PATH="$HOME/.../bin:$PATH" # needed to bootsrap
 eval `... env`
 source ~/.../lib/tracefuncs
