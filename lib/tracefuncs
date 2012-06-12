@@ -1,3 +1,5 @@
+source ~/.../lib/assert-decent-shell || return
+
 function ...istracing {
     [[ -n "$DOTDOTDOT_TRACE" ]]
 }

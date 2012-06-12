@@ -1,3 +1,5 @@
+source ~/.../lib/assert-decent-shell || return
+
 if [ -n "$ZSH_VERSION" ]; then
     export SHELLNAME=zsh
 elif [ -n "$BASH_VERSION" ]; then

@@ -1,16 +1,18 @@
-source $DOTDOTDOT_ROOT/lib/tracefuncs
+source ~/.../lib/assert-decent-shell || return
+
+source "$HOME/.../lib/tracefuncs"
 function ...repo {
     if [ -z "$1" ]; then
-        cd "$DOTDOTDOT_ROOT/src"
+        cd "$HOME/.../src"
         return
     fi
-    if [ -e "$DOTDOTDOT_ROOT/src/$1" ]; then
-        cd "$1"
-    elif [ -e "$DOTDOTDOT_ROOT/src/$1-dots" ]; then
-        cd "$DOTDOTDOT_ROOT/src/$1-dots"
+    if [ -e "$HOME/.../src/$1" ]; then
+        cd $1
+    elif [ -e "$HOME/.../src/$1-dots" ]; then
+        cd "$HOME/.../src/$1-dots"
     else
         echo "Hrm. Not sure what to do with \`$1\`."
-        cd "$DOTDOTDOT_ROOT/src"
+        cd "$HOME/.../src"
     fi
 }
 alias ...src=...repo # "...src" is a bit confusing vs. "...source", but hey.
