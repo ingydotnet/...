@@ -90,15 +90,14 @@ function ...trace {
         ...traceon
         DOTDOTDOT_TRACE_INDENT=''
         local cmd=''
-        if [ -n "$@" ]; then
-            cmd="$@"
+        if [ 0 != $# ]; then
+            echo -n '[Running: '; printf "<%s> " "$@"; echo ']'
+            "$@"
         elif [ -n "$SHELLNAME" ]; then
-            cmd="$SHELLNAME"
+            $SHELLNAME
         else
-            cmd="$SHELL"
+            $SHELL
         fi
-        echo "Tracing [$cmd]"
-        $cmd
         ...info "(Back in original shell, SHLVL=$SHLVL)"
     ) # TODO: 2>&1 | less --quit-if-one-screen --raw-control-chars
 }
