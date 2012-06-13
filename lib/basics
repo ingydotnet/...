@@ -1,14 +1,19 @@
 source ~/.../lib/assert-decent-shell || return
 
-PATH="$HOME/.../bin:$PATH" # needed to bootsrap
-eval `... env`
 source ~/.../lib/tracefuncs
-...debug2 "Did eval `... env`, producing: `... env`"
+...filestart "~/.../lib/basics"
+
+eval `~/.../bin/... env`
+...debug2 "Did eval \`... env\`, producing: `~/.../bin/... env`"
+
+if [ -n "$ZSH_VERSION" ]; then
+    eval "dotdotdot_order=($DOTDOTDOT_ORDER)"
+    ...debug2 " (Also set \$dotdotdot_order array)"
+fi
 
 source ~/.../lib/scripting
 source ~/.../lib/path-manip
 
-...filestart "~/.../lib/basics" # Bash won't let me use "$0" here.
 ...source ~/.../lib/path-manip
 ...path-prepend ~/.../bin
 ...path-prepend ~/bin

@@ -37,6 +37,14 @@ function ...quieteach {
     DOTDOTDOT_ORDER="$HOME/... $HOME/.dots-conf $DOTDOTDOT_ORDER"
     ...each "$@"
 )}
+function ...eachsource {
+    if [ -z "$ZSH_VERSION" ]; then
+        echo "...eachsource only implemented for zsh (TODO)."
+        return
+    else
+        source ~/.../lib/eachsource.zsh "$@"
+    fi
+}
 
 # By using this you get ...trace abilities, plus it guards against recursion
 function ...source {
@@ -65,12 +73,12 @@ alias sourceif=...sourceif # Backwards compatibility.
 ...sourcedircontents() {
     d=$1
     [ -d $d ] || return
-    for n in $d/*; do
-        if [[ -d $n ]]; then
-            ...debug2 "(Skipping $n because it's a directory)"
-        else
-            ...source $n
-        fi
-    done
+    ...debug2 "Sourcing contents of $d/*"
+    if [ -z "$TRACE_DIRSOURCE" ]; then
+        ...debug2 " (run with TRACE_DIRSOURCE=1 to view)"
+    else
+        cat $d/*
+    fi
+    source <(cat $d/*)
 }
 # vim:ft=zsh
