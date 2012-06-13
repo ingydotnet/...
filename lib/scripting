@@ -82,11 +82,14 @@ alias sourceif=...sourceif # Backwards compatibility.
     find $d -name '.*.sw?' -exec echo '{}' is probably going to be trouble. \;
     source <(cat $d/*)
     if [ $? != 0 ]; then
-        ...warn "Oops. Had a problem. Trying `pwd`/$d/* individually to debug:"
-        for n in $d/*; do
-            ...warn $n
-            ...source $n
-        done
+        (
+            ...traceon
+            ...warn "Oops. Had a problem. Trying $d/* individually to debug:"
+            for n in $d/*; do
+                ...source $n
+                ...debug3 "(Exit code: $?)"
+            done
+        )
     fi
 }
 # vim:ft=zsh
