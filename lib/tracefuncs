@@ -65,7 +65,7 @@ function ...die {
 
 ...fully-qualify() {
     local fn="$@"
-    [[ ${fn:0:1} != / ]] && fn=`pwd`/$fn
+    expr $fn : / || fn=`pwd`/$fn
     echo $fn
 }
 
