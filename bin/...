@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# use XXX;use YAML;use YAML::Loader;
+ use XXX;use YAML;use YAML::Loader;
 # Next line removes site dirs, so we don't pull in non-core modules.
 BEGIN { @INC = grep not(/\bsite/), @INC }
 
@@ -227,7 +227,7 @@ sub do_backup {
     print "Backing up your dot files to $backup_dir/\n";
     open F, "> $backup_list_file";
     my $n = 0;
-    for my $file (sort keys %{$class->_all_files}) {
+    for my $file (sort keys %{XXX $class->_all_files}) {
         next unless -e "$home_dir/$file";
         $n++;
         print "$file\n" unless $quiet;
@@ -468,8 +468,15 @@ sub _up_to_date {
 sub _all_dot_paths {
     my $class = shift;
     my @paths;
-    for my $entry (@{$config->{dot_paths}}) {
-        my $path = $entry->{path};
+    for my $entry (@{$config->{dots}}) {
+        my $result = {};
+        my $path = $entry->{path} || do {
+            my $repo = $entry->{repo};
+            $result->{repo} = $repo;
+            $repo =~ s!.*?([^/]+)/?.git$!$1!;
+            $repo;
+        };
+        die unless $path;
         if ($path !~ /^\//) {
             $path = "$config->{dot_paths_base}/$path";
         }
@@ -478,9 +485,8 @@ sub _all_dot_paths {
         }
         die "Error: can't resolve path for '" . $entry->{path} . "'\n"
             unless $path =~ /^\//;
-        die "Error: '$path' is not a directory\n"
-            unless -d $path;
-        push @paths, $path;
+        $result->{path} = $path;
+        push @paths, $result;
     }
     return @paths;
 }
@@ -490,7 +496,9 @@ sub _all_files {
     my $class = shift;
     my $get_all = shift || 0;
     my $all_files = {};
-    for my $path ($class->_all_dot_paths) {
+    for my $entry ($class->_all_dot_paths) {
+        my $path = $entry->{path};
+        $class->_check_path($path);
         for my $file (`(cd $path; find . -type f -o -type l)`) {
             $file =~ s!^\./!!;
             chomp($file);
@@ -508,6 +516,19 @@ sub _all_files {
         }
     }
     return $all_files;
+}
+
+sub _check_path {
+    my ($class, $path) = @_;
+    if (not -d $path) {
+        die <<"...";
+
+'$path' does not exist.
+
+Perhaps you need to run '... update' to get all your repos.
+
+...
+    }
 }
 
 # sub _each_make {
@@ -671,7 +692,7 @@ machines, DotDotDot makes that easy. Just follow these steps:
     Backed up 69 dot files to /home/ingy/.../backup/20101121-094620
     > cd ~/...
     > mv backup/20101121-094620 src/my-dots
-    > # Add C<my-dots> to C<dot_paths> in the C<conf> file.
+    > # Add C<my-dots> to C<dots> in the C<conf> file.
     > ... remove    # Delete all your dot files from $HOME
     > ... install   # Reinstall them (as links!)
     > cd src/my-dots
