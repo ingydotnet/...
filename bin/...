@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-use XXX;use YAML;use YAML::Loader;
+# use XXX;use YAML;use YAML::Loader;
 # Next line removes site dirs, so we don't pull in non-core modules.
 BEGIN { @INC = grep not(/\bsite/), @INC }
 
@@ -13,6 +13,8 @@ my $usage = <<'...';
 Usage: ... [options] command [command-options]
 
 Commands:
+    conf conf-file-path | conf-file-url | <stdin>
+	      - Put content into the .../conf configuration file.
     backup    - Backup all the dot files that would be changed by 'install'.
     install   - Copy or link all the dot files into your $HOME directory.
       -l | --links    Use hardlinks (default)
@@ -25,13 +27,12 @@ Commands:
     upgrade   - Do update and then install.
     restore   - Restore a backup.
     remove    - DELETE all the dot files in $HOME that would be installed!!!
-    conf(igure) conf-file-path | conf-file-url | <stdin>
-	      - Put content into the .../conf configuration file.
     env       - Get input for a shell eval `... env`, useful for scripting.
+    help      - Print this help and exit.
 
 Options:
     -v --version    Print the version and exit.
-    -h -?           Print this help and exit.
+    -h -?           Same as 'help' command.
 
 For complete documentation, run: 'perldoc ...'
 
@@ -86,7 +87,7 @@ and edit appropriately.
 TOP: {
     my $class = __PACKAGE__;
     $class->parse_command_line();
-    $class->setup() unless $command =~ /^(help|version|configure)$/;
+    $class->setup() unless $command =~ /^(help|version|conf)$/;
     $class->$handler();
 }
 
@@ -110,8 +111,13 @@ sub parse_command_line {
     elsif ($ARGV[0] eq 'rm') {
         $command = 'remove'
     }
-    elsif ($ARGV[0] =~ /^conf(igure)?$/) {
-        $command = 'configure';
+    elsif ($ARGV[0] eq 'restore') {
+        $command = 'restore';
+        $restore_from = splice @ARGV, 1, 1
+            or die "Error: 'restore' command requires a backup directory argument";
+    }
+    elsif ($ARGV[0] eq 'conf') {
+        $command = 'conf';
         $conf_path = splice(@ARGV, 1, 1) || '';
     }
     elsif ($ARGV[0] =~ /^-/) {
@@ -119,10 +125,6 @@ sub parse_command_line {
     }
     else {
         $command = $ARGV[0];
-        if ($command eq 'restore') {
-            $restore_from = splice @ARGV, 1, 1
-                or die "Error: 'restore' command requires a backup directory argument";
-        }
     }
     if ($command eq 'install') {
         if ($ARGV[1] =~ /^(-h|--hardlink)$/) {
@@ -139,9 +141,9 @@ sub parse_command_line {
         }
     }
     if (@ARGV > 1) {
-        die "Error: invalid usage. Try: '... -h'.\n";
+        die "Error: invalid usage. Try: '.../... -h'.\n";
     }
-    $handler = "handle_$command";
+    $handler = "do_$command";
     die "Error: unsupported command '$command'\n"
         unless $class->can($handler);
 }
@@ -185,31 +187,15 @@ sub setup {
     $timestamp = sprintf "%04d%02d%02d-%02d%02d%02d", $year, $mon, $day, $hour, $min, $sec;
 }
 
-sub handle_default {
+#-------------------------------------------------------------------------------
+# The do_ subcommand handlers are defined here in 'usage' order:
+#-------------------------------------------------------------------------------
+sub do_default {
     my $class = shift;
-    $class->handle_help;
+    $class->do_help;
 }
 
-sub handle_help {
-    my $class = shift;
-    print $usage;
-}
-
-sub handle_version {
-    my $class = shift;
-    print "This is '...' version '$VERSION'\n\n";
-}
-
-sub handle_env {
-    my $class = shift;
-    print <<EOT
-: See http://github.com/ingydotnet/boot-dots for ideas on how to use these;
-export DOTDOTDOT_ROOT='$root_dir';
-export DOTDOTDOT_ORDER='${\ join ' ', $class->_all_dot_paths}';
-EOT
-}
-
-sub handle_configure {
+sub do_conf {
     my $class = shift;
     die "'$conf_file' already exists\n"
         if -f $conf_file;
@@ -229,57 +215,11 @@ sub handle_configure {
         $class->_run_sys("cp $conf_path $conf_file");
     }
     else {
-        die "Unknown argument '$conf_path' for '... configure'\n";
+        die "Unknown argument '$conf_path' for '... conf'\n";
     }
 }
 
-sub handle_configure_xxx {
-    my $class = shift;
-    $config = YAML::Tiny::LoadFile($conf_path);
-    my $array = $class->_determine_config_section($config)
-	or die "Can't determine a config for this environment\n";
-    my @paths;
-    for my $elem (@$array) {
-        my $repo = $elem->{repo} or die;
-        my $branch = $elem->{branch} ? "--branch $elem->{branch} " : '';
-        $repo =~ m{.*/(\S+).git$} or die "'$repo' doesn't have trailing .git";
-        my $dir = $1;
-        my $path = File::Spec->catdir($root_dir, 'src', $dir);
-        my $cmd = "git clone $branch$repo $path";
-        $class->_run_sys($cmd)
-            unless -e $path;
-        if (-e "$path/.gitmodules") {
-            $cmd = "(cd $path; git submodule update --recursive --init)";
-            $class->_run_sys($cmd);
-        }
-        push @paths, $dir;
-    }
-    open CONF, "> $conf_file"
-        or die "Can't open $conf_file for output";
-    print CONF <<"...";
-dot_paths:
-${\ join "\n", map "- path: $_", @paths}
-
-# You can set this to link (default), symlink or copy.
-# install_method: symlink
-...
-    close CONF;
-    print <<"...";
-
-Created $conf_file
-
-Now run this command to install your dot files:
-
-    ~/.../... install
-...
-}
-
-sub _determine_config_section {
-    my ($class, $config) = @_;
-    return $config->{'='};
-}
-
-sub handle_backup {
+sub do_backup {
     my $class = shift;
     my $quiet = shift or 0;
     my $backup_dir = "$root_dir/backup/$timestamp";
@@ -299,35 +239,11 @@ sub handle_backup {
     print "Backed up $n dot files to $backup_dir\n";
 }
 
-sub handle_dots_install {
+sub do_install {
     my $class = shift;
-    $class->_each_make('install');
-}
-
-sub handle_dots_deps {
-    my $class = shift;
-    $class->_each_make('deps');
-}
-
-sub _each_make {
-    my ($class, $target) = @_;
-    for my $dots_dir ($class->_all_dot_paths) {
-        my $dots_makefile = "$dots_dir/...Makefile";
-        next if not -e $dots_makefile;
-        $ENV{DOTDOTDOT_ROOT} = $root_dir;
-        # Should we hack together an internal make-like fallback if the user
-        # doesn't have actual `make`? -rking
-        $class->_run_sys(
-            'make', '-C', $dots_dir, '-f', $dots_makefile, $target);
-    }
-}
-
-sub handle_install {
-    my $class = shift;
-    $class->check_all_paths();
-    $class->handle_backup('quiet') if $config->{auto_backup};
-    $class->handle_dots_install();
-    $class->handle_dots_deps();
+    $class->do_backup('quiet') if $config->{auto_backup};
+#     $class->do_dots_install();
+#     $class->do_dots_deps();
     print "Installing your dot files:\n";
     my $all_files = $class->_all_files;
     my $method = $cli_install_method || $config->{install_method};
@@ -358,7 +274,7 @@ sub handle_install {
     print "Installed $n new dot files\n";
 }
 
-sub handle_list {
+sub do_list {
     my $class = shift;
     my $all_files = $class->_all_files;
     for my $file (sort keys %$all_files) {
@@ -367,7 +283,16 @@ sub handle_list {
     }
 }
 
-sub handle_conflicts {
+sub do_status {
+    my $class = shift;
+    for my $dir ($root_dir, $class->_all_dot_paths) {
+        next unless -d "$dir/.git";
+        my $cmd = "(cd $dir; git status)";
+        $class->_run_sys($cmd);
+    }
+}
+
+sub do_conflicts {
     my $class = shift;
     my $all_files = $class->_all_files(1);
     for my $file (sort keys %$all_files) {
@@ -378,7 +303,7 @@ sub handle_conflicts {
     }
 }
 
-sub handle_update {
+sub do_update {
     my $class = shift;
     print "Updating your `...` system and dot files:\n";
     for my $dir ($root_dir, $class->_all_dot_paths) {
@@ -388,36 +313,27 @@ sub handle_update {
     }
 }
 
-sub handle_status {
+sub do_upgrade {
     my $class = shift;
-    for my $dir ($root_dir, $class->_all_dot_paths) {
-        next unless -d "$dir/.git";
-        my $cmd = "(cd $dir; git status)";
-        $class->_run_sys($cmd);
-    }
+    $class->do_update;
+    $class->do_install;
 }
 
-sub handle_upgrade {
-    my $class = shift;
-    $class->handle_update;
-    $class->handle_install;
-}
-
-sub handle_restore {
+sub do_restore {
     my $class = shift;
     die "'$restore_from' is not a backup directory"
         unless -d $restore_from;
 
-    $class->handle_backup('quiet') if $config->{auto_backup};
+    $class->do_backup('quiet') if $config->{auto_backup};
     print "Restoring your dot files from $restore_from\n";
     my $cmd = "(cd $restore_from; find . | cpio -dump $home_dir)";
     $class->_run_sys($cmd);
     print "Restore complete.\n";
 }
 
-sub handle_remove {
+sub do_remove {
     my $class = shift;
-    $class->handle_backup('quiet') if $config->{auto_backup};
+    $class->do_backup('quiet') if $config->{auto_backup};
     print "Removing all your installed dot files:\n";
     my $all_files = $class->_all_files;
     my $n = 0;
@@ -435,6 +351,83 @@ sub handle_remove {
     print "Deleted $n dot files\n";
 }
 
+sub do_env {
+    my $class = shift;
+    print <<EOT
+# See http://github.com/ingydotnet/boot-dots for ideas on how to use these
+export DOTDOTDOT_ROOT='$root_dir';
+export DOTDOTDOT_ORDER='${\ join ' ', $class->_all_dot_paths}';
+EOT
+}
+
+sub do_help {
+    my $class = shift;
+    print $usage;
+}
+
+sub do_version {
+    my $class = shift;
+    print "This is '...' version '$VERSION'\n\n";
+}
+
+#-------------------------------------------------------------------------------
+# Other do_ handlers not in the usage
+# XXX These may be removed soon.
+#-------------------------------------------------------------------------------
+# sub do_dots_install {
+#     my $class = shift;
+#     $class->_each_make('install');
+# }
+
+# sub do_dots_deps {
+#     my $class = shift;
+#     $class->_each_make('deps');
+# }
+
+# sub xxx_do_conf {
+#     my $class = shift;
+#     $config = YAML::Tiny::LoadFile($conf_path);
+#     my $array = $config->{'='}
+# 	or die "Can't determine a config for this environment\n";
+#     my @paths;
+#     for my $elem (@$array) {
+#         my $repo = $elem->{repo} or die;
+#         my $branch = $elem->{branch} ? "--branch $elem->{branch} " : '';
+#         $repo =~ m{.*/(\S+).git$} or die "'$repo' doesn't have trailing .git";
+#         my $dir = $1;
+#         my $path = File::Spec->catdir($root_dir, 'src', $dir);
+#         my $cmd = "git clone $branch$repo $path";
+#         $class->_run_sys($cmd)
+#             unless -e $path;
+#         if (-e "$path/.gitmodules") {
+#             $cmd = "(cd $path; git submodule update --recursive --init)";
+#             $class->_run_sys($cmd);
+#         }
+#         push @paths, $dir;
+#     }
+#     open CONF, "> $conf_file"
+#         or die "Can't open $conf_file for output";
+#     print CONF <<"...";
+# dot_paths:
+# ${\ join "\n", map "- path: $_", @paths}
+# 
+# # You can set this to link (default), symlink or copy.
+# # install_method: symlink
+# ...
+#     close CONF;
+#     print <<"...";
+# 
+# Created $conf_file
+# 
+# Now run this command to install your dot files:
+# 
+#     ~/.../... install
+# ...
+# }
+
+#-------------------------------------------------------------------------------
+# Helper methods
+#-------------------------------------------------------------------------------
 sub fatal_error {
     my $msg = shift;
     die "$msg\n" unless -t STDERR;
@@ -443,6 +436,7 @@ sub fatal_error {
     <STDIN>;
 }
 
+# Run a system command (and print it too)
 sub _run_sys {
     my ($class, @cmd) = @_;
     local $" = ' ';
@@ -450,6 +444,8 @@ sub _run_sys {
     system(@cmd) == 0 or fatal_error "Failed to: @cmd";
 }
 
+# Check is a file needs to be updated or not. Deals with files, links and
+# symlinks.
 sub _up_to_date {
     my $class = shift;
     my $src = shift;
@@ -468,6 +464,7 @@ sub _up_to_date {
     return <S> eq <D>;
 }
 
+# Check if a file needs to be updated or not
 sub _all_dot_paths {
     my $class = shift;
     my @paths;
@@ -488,9 +485,10 @@ sub _all_dot_paths {
     return @paths;
 }
 
+# Find all the valid 'dot' files for various operations.
 sub _all_files {
     my $class = shift;
-    my $all = shift || 0;
+    my $get_all = shift || 0;
     my $all_files = {};
     for my $path ($class->_all_dot_paths) {
         for my $file (`(cd $path; find . -type f -o -type l)`) {
@@ -501,7 +499,7 @@ sub _all_files {
             if (! $all_files->{$file}) {
                 $all_files->{$file} = $path;
             }
-            elsif ($all) {
+            elsif ($get_all) {
                 my $old = $all_files->{$file};
                 $all_files->{$file} = $old = [$old]
                     unless ref($old) eq 'ARRAY';
@@ -511,6 +509,19 @@ sub _all_files {
     }
     return $all_files;
 }
+
+# sub _each_make {
+#     my ($class, $target) = @_;
+#     for my $dots_dir ($class->_all_dot_paths) {
+#         my $dots_makefile = "$dots_dir/...Makefile";
+#         next if not -e $dots_makefile;
+#         $ENV{DOTDOTDOT_ROOT} = $root_dir;
+#         # Should we hack together an internal make-like fallback if the user
+#         # doesn't have actual `make`? -rking
+#         $class->_run_sys(
+#             'make', '-C', $dots_dir, '-f', $dots_makefile, $target);
+#     }
+# }
 
 =encoding utf8
 
