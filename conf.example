@@ -13,7 +13,7 @@
 # a 'path' of the directory, which if relative, is relative to the
 # value of 'dot_paths_base', above.
 # 
-dot_paths:
+dots:
 - path: dotdotdot
 - path: personal
 - path: private

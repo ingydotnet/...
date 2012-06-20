@@ -1,30 +1,33 @@
 #!/usr/bin/env perl
-# use XXX;use YAML;use YAML::Loader;
+use XXX;use YAML;use YAML::Loader;
 # Next line removes site dirs, so we don't pull in non-core modules.
 BEGIN { @INC = grep not(/\bsite/), @INC }
 
+# TODO:
+# - backup needs to save the .../conf file
+
 my $usage = <<'...';
 
-                ... - The Unix Dot File Manager
+        ... - The Unix Dot File Manager
 
 Usage: ... [options] command [command-options]
 
 Commands:
-    backup - Backup all the dot files that would be changed by 'install'.
-    install - Copy or link all the dot files into your $HOME directory.
-        -l | --links    Use hardlinks (default)
-        -s | --symlink  Use symlinks
-        -f | --copy     Full copy
-    list - List all the full paths of the files that would be installed.
-    status - Get change status of all the dot repositories.
-    conflicts - Show dot files that collide with ones from other repos
-    update - Fetch changes from all the dot repositories.
-    upgrade - Do update and then install.
-    restore - Restore a backup.
-    remove - DELETE all the dot files in $HOME that would be installed!!!
-    configure path/to/dots-conf.yaml
-	... can configure itself with this command and a conf file.
-    env - Get input for a shell eval `... env`, useful for scripting.
+    backup    - Backup all the dot files that would be changed by 'install'.
+    install   - Copy or link all the dot files into your $HOME directory.
+      -l | --links    Use hardlinks (default)
+      -s | --symlink  Use symlinks
+      -f | --copy     Full copy
+    list      - List all the full paths of the files that would be installed.
+    status    - Get change status of all the dot repositories.
+    conflicts - Show dot files that collide with ones from other repos.
+    update    - Fetch changes from all the dot repositories.
+    upgrade   - Do update and then install.
+    restore   - Restore a backup.
+    remove    - DELETE all the dot files in $HOME that would be installed!!!
+    conf(igure) conf-file-path | conf-file-url | <stdin>
+	      - Put content into the .../conf configuration file.
+    env       - Get input for a shell eval `... env`, useful for scripting.
 
 Options:
     -v --version    Print the version and exit.
@@ -66,9 +69,19 @@ my $conf_file = "$root_dir/conf";
 my $config;         # Config hash
 my $timestamp;      # Time stamp
 my $restore_from;   # Directory to restore from
-my $input_file;
+my $conf_path;
 
 my $cli_install_method = '';
+
+my $no_conf_msg = <<"...";
+Error: '$conf_file' does not exist.
+
+Run `... conf <path-or-url>` to set it up.
+
+You can also copy $root_dir/conf.example to $conf_file
+and edit appropriately.
+
+...
 
 TOP: {
     my $class = __PACKAGE__;
@@ -80,7 +93,7 @@ TOP: {
 sub parse_command_line {
     my $class = shift;
     if (@ARGV == 0) {
-        $command = 'help';
+        $command = 'default';
     }
     elsif ($ARGV[0] =~ /^(-\?|-h|--help)$/) {
         $command = 'help';
@@ -99,8 +112,7 @@ sub parse_command_line {
     }
     elsif ($ARGV[0] =~ /^conf(igure)?$/) {
         $command = 'configure';
-        $input_file = splice(@ARGV, 1, 1)
-            or die "configure requires a dots-conf.yaml file";
+        $conf_path = splice(@ARGV, 1, 1) || '';
     }
     elsif ($ARGV[0] =~ /^-/) {
         die "Error: '$ARGV[0]' is an invalid option\n";
@@ -138,25 +150,24 @@ sub setup {
     my $class = shift;
 
     -d $root_dir or die "Error: $root_dir is not a directory\n";
-    -f $conf_file or die <<"...";
-Error: $conf_file does not exist.
-
-You should copy $root_dir/conf.example to $conf_file
-and edit appropriately.
-
-...
+    -f $conf_file or die $no_conf_msg;
     $config = YAML::Tiny::LoadFile($conf_file);
 
     $config->{dot_paths_base} ||= 'src';
 
-    die "Error: 'dot_paths' not defined in $conf_file\n"
-        unless defined $config->{dot_paths};
-    die "Error: 'dot_paths' needs to be a sequence of mappings.\n"
-        if ref($config->{dot_paths}) ne 'ARRAY' or
-        not(@{$config->{dot_paths}}) or
-        grep {ref ne 'HASH'} @{$config->{dot_paths}};
-    die "Error: each dot_path entry must have a 'path' value\n"
-        if grep {not defined $_->{path}} @{$config->{dot_paths}};
+    my $dots = $config->{dots} || $config->{dot_paths}
+        or die "Error: 'dots' not defined in $conf_file\n";
+    die "Error: 'dots' needs to be a sequence of mappings.\n"
+        if ref($dots) ne 'ARRAY' or
+        not(@$dots) or
+        grep {ref ne 'HASH'} @$dots;
+    die "Error: each dot_path entry must have a 'path' or 'repo' value\n"
+        if grep {
+            not defined $_->{path} and
+            not defined $_->{repo}
+        } @$dots;
+    delete $config->{dot_paths};
+    $config->{dots} = $dots;
 
     $config->{auto_backup} =
         not(exists($config->{auto_backup})) ? 1 :
@@ -172,6 +183,11 @@ and edit appropriately.
     $year += 1900;
     $mon++;
     $timestamp = sprintf "%04d%02d%02d-%02d%02d%02d", $year, $mon, $day, $hour, $min, $sec;
+}
+
+sub handle_default {
+    my $class = shift;
+    $class->handle_help;
 }
 
 sub handle_help {
@@ -195,7 +211,31 @@ EOT
 
 sub handle_configure {
     my $class = shift;
-    $config = YAML::Tiny::LoadFile($input_file);
+    die "'$conf_file' already exists\n"
+        if -f $conf_file;
+    if (not $conf_path) {
+        my $text = do {local $/; <STDIN>};
+        open OUT, ">$conf_file" or die "Can't open $conf_file for output";
+        print OUT $text;
+        close $text;
+    }
+    elsif ($conf_path =~ m!^https?://!) {
+        $class->_run_sys("curl $conf_path > $conf_file");
+    }
+    elsif ($conf_path =~ /:/) {
+        $class->_run_sys("scp $conf_path $conf_file");
+    }
+    elsif (-f $conf_path) {
+        $class->_run_sys("cp $conf_path $conf_file");
+    }
+    else {
+        die "Unknown argument '$conf_path' for '... configure'\n";
+    }
+}
+
+sub handle_configure_xxx {
+    my $class = shift;
+    $config = YAML::Tiny::LoadFile($conf_path);
     my $array = $class->_determine_config_section($config)
 	or die "Can't determine a config for this environment\n";
     my @paths;
@@ -230,7 +270,7 @@ Created $conf_file
 
 Now run this command to install your dot files:
 
-    ~/.../bin/... install
+    ~/.../... install
 ...
 }
 
@@ -284,6 +324,7 @@ sub _each_make {
 
 sub handle_install {
     my $class = shift;
+    $class->check_all_paths();
     $class->handle_backup('quiet') if $config->{auto_backup};
     $class->handle_dots_install();
     $class->handle_dots_deps();
