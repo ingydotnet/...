@@ -2,22 +2,24 @@ NAME ...
     Unix dot file management and sharing
 
 QUICK INSTALL
-    Just run these 2 commands for a basic ... setup.
-
         > git clone git://github.com/ingydotnet/....git
-        > ./.../...
+        > .../... conf .../example.conf
+        > .../... update
+        > .../... install
 
 SYNOPSIS
     NOTE: In the following lines, '> ' is a command line prompt, and '...'
     is the literal name of this program.
 
         > ... help                  # Get help
+        > ... conf <path-or-url>    # Copy a ... conf from a file or url
         > ... backup                # Backup your old dot files
-        > ... list                  # List the source files that will install
         > ... install               # Install your dot files
+        > ... list                  # List the source files that will install
+        > ... status                # Check status of your dot file repos
+        > ... conflicts             # Show dot file collisions
         > ... update                # Update your dot files
         > ... upgrade               # Do update and then install.
-        > ... status                # Check status of your dot file repos
         > ... remove                # Remove all installed dot files
         > ... restore ~/.../backup/20101112-235947/
 
@@ -98,7 +100,9 @@ LINKS
         * symlink to source
         * copy from source
 
-    You can change this with the "install_method" configuration setting.
+    You can change this with the "install_method" configuration setting. You
+    can also use the "-l | --link" and "-s | --symlink" options of the
+    install subcommand to override this from the command line.
 
     Using links is preferable. That way if you change a dot file in your
     home directory, it gets changed in its source repository. Then you can
@@ -134,7 +138,7 @@ BACKUPS
         Backed up 69 dot files to /home/ingy/.../backup/20101121-094620
         > cd ~/...
         > mv backup/20101121-094620 src/my-dots
-        > # Add C<my-dots> to C<dot_paths> in the C<conf> file.
+        > # Add C<my-dots> to C<dots> in the C<conf> file.
         > ... remove    # Delete all your dot files from $HOME
         > ... install   # Reinstall them (as links!)
         > cd src/my-dots

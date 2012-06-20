@@ -57,7 +57,9 @@ use File::Spec;
 
 my $VERSION = '1.0.0';
 
+#-------------------------------------------------------------------------------
 # State variables
+#-------------------------------------------------------------------------------
 
 # $HOME env
 my $home_dir = $ENV{HOME} or die "Error: \$HOME not set\n";
@@ -65,6 +67,7 @@ my $command;        # backup, install, etc
 my $handler;        # Class method to call
 # ~/.../
 my $root_dir = "$home_dir/...";
+my $root_entry = { path => $root_dir };
 # ~/.../conf
 my $conf_file = "$root_dir/conf";
 my $config;         # Config hash
@@ -84,6 +87,9 @@ and edit appropriately.
 
 ...
 
+#-------------------------------------------------------------------------------
+# Processing starts here
+#-------------------------------------------------------------------------------
 TOP: {
     my $class = __PACKAGE__;
     $class->parse_command_line();
@@ -227,7 +233,7 @@ sub do_backup {
     print "Backing up your dot files to $backup_dir/\n";
     open F, "> $backup_list_file";
     my $n = 0;
-    for my $file (sort keys %{XXX $class->_all_files}) {
+    for my $file (sort keys %{$class->_all_files}) {
         next unless -e "$home_dir/$file";
         $n++;
         print "$file\n" unless $quiet;
@@ -242,9 +248,8 @@ sub do_backup {
 sub do_install {
     my $class = shift;
     $class->do_backup('quiet') if $config->{auto_backup};
-#     $class->do_dots_install();
-#     $class->do_dots_deps();
     print "Installing your dot files:\n";
+    $class->_each_make('install');
     my $all_files = $class->_all_files;
     my $method = $cli_install_method || $config->{install_method};
     my $n = 0;
@@ -285,9 +290,10 @@ sub do_list {
 
 sub do_status {
     my $class = shift;
-    for my $dir ($root_dir, $class->_all_dot_paths) {
-        next unless -d "$dir/.git";
-        my $cmd = "(cd $dir; git status)";
+    for my $entry ($root_entry, $class->_all_dot_paths) {
+        my $path = $entry->{path};
+        next unless -d "$path/.git";
+        my $cmd = "(cd $path; git status)";
         $class->_run_sys($cmd);
     }
 }
@@ -306,10 +312,27 @@ sub do_conflicts {
 sub do_update {
     my $class = shift;
     print "Updating your `...` system and dot files:\n";
-    for my $dir ($root_dir, $class->_all_dot_paths) {
-        next unless -d "$dir/.git";
-        my $cmd = "(cd $dir; git pull)";
-        $class->_run_sys($cmd);
+    for my $entry ($root_entry, $class->_all_dot_paths) {
+        my $path = $entry->{path};
+        my $repo = $entry->{repo} || '';
+        if (! -d $path) {
+            if ($repo) {
+                $class->_run_sys("git clone $repo $path");
+                $class->_make(update => $path);
+            }
+            else {
+                die "$path does not exist and there is not 'repo' entry";
+            }
+        }
+        else {
+            if (! -d "$path/.git") {
+                warn "$path exists, but is not a git repo. Ignoring.";
+            }
+            else {
+                $class->_run_sys("(cd $path; git pull)");
+                $class->_make(update => $path);
+            }
+        }
     }
 }
 
@@ -356,7 +379,7 @@ sub do_env {
     print <<EOT
 # See http://github.com/ingydotnet/boot-dots for ideas on how to use these
 export DOTDOTDOT_ROOT='$root_dir';
-export DOTDOTDOT_ORDER='${\ join ' ', $class->_all_dot_paths}';
+export DOTDOTDOT_ORDER='${\ join ' ', map $_->{path}, $class->_all_dot_paths}';
 EOT
 }
 
@@ -369,61 +392,6 @@ sub do_version {
     my $class = shift;
     print "This is '...' version '$VERSION'\n\n";
 }
-
-#-------------------------------------------------------------------------------
-# Other do_ handlers not in the usage
-# XXX These may be removed soon.
-#-------------------------------------------------------------------------------
-# sub do_dots_install {
-#     my $class = shift;
-#     $class->_each_make('install');
-# }
-
-# sub do_dots_deps {
-#     my $class = shift;
-#     $class->_each_make('deps');
-# }
-
-# sub xxx_do_conf {
-#     my $class = shift;
-#     $config = YAML::Tiny::LoadFile($conf_path);
-#     my $array = $config->{'='}
-# 	or die "Can't determine a config for this environment\n";
-#     my @paths;
-#     for my $elem (@$array) {
-#         my $repo = $elem->{repo} or die;
-#         my $branch = $elem->{branch} ? "--branch $elem->{branch} " : '';
-#         $repo =~ m{.*/(\S+).git$} or die "'$repo' doesn't have trailing .git";
-#         my $dir = $1;
-#         my $path = File::Spec->catdir($root_dir, 'src', $dir);
-#         my $cmd = "git clone $branch$repo $path";
-#         $class->_run_sys($cmd)
-#             unless -e $path;
-#         if (-e "$path/.gitmodules") {
-#             $cmd = "(cd $path; git submodule update --recursive --init)";
-#             $class->_run_sys($cmd);
-#         }
-#         push @paths, $dir;
-#     }
-#     open CONF, "> $conf_file"
-#         or die "Can't open $conf_file for output";
-#     print CONF <<"...";
-# dot_paths:
-# ${\ join "\n", map "- path: $_", @paths}
-# 
-# # You can set this to link (default), symlink or copy.
-# # install_method: symlink
-# ...
-#     close CONF;
-#     print <<"...";
-# 
-# Created $conf_file
-# 
-# Now run this command to install your dot files:
-# 
-#     ~/.../... install
-# ...
-# }
 
 #-------------------------------------------------------------------------------
 # Helper methods
@@ -472,7 +440,6 @@ sub _all_dot_paths {
         my $result = {};
         my $path = $entry->{path} || do {
             my $repo = $entry->{repo};
-            $result->{repo} = $repo;
             $repo =~ s!.*?([^/]+)/?.git$!$1!;
             $repo;
         };
@@ -486,6 +453,7 @@ sub _all_dot_paths {
         die "Error: can't resolve path for '" . $entry->{path} . "'\n"
             unless $path =~ /^\//;
         $result->{path} = $path;
+        $result->{repo} = $entry->{repo} if $entry->{repo};
         push @paths, $result;
     }
     return @paths;
@@ -531,18 +499,22 @@ Perhaps you need to run '... update' to get all your repos.
     }
 }
 
-# sub _each_make {
-#     my ($class, $target) = @_;
-#     for my $dots_dir ($class->_all_dot_paths) {
-#         my $dots_makefile = "$dots_dir/...Makefile";
-#         next if not -e $dots_makefile;
-#         $ENV{DOTDOTDOT_ROOT} = $root_dir;
-#         # Should we hack together an internal make-like fallback if the user
-#         # doesn't have actual `make`? -rking
-#         $class->_run_sys(
-#             'make', '-C', $dots_dir, '-f', $dots_makefile, $target);
-#     }
-# }
+sub _each_make {
+    my ($class, $target) = @_;
+    for my $entry ($class->_all_dot_paths) {
+        $class->_make($target, $entry->{path});
+    }
+}
+
+sub _make {
+    my ($class, $target, $dots_dir) = @_;
+    my $dots_makefile = "$dots_dir/...Makefile";
+    return if not -e $dots_makefile;
+    $ENV{DOTDOTDOT_ROOT} = $root_dir;
+    $class->_run_sys(
+        'make', '-C', $dots_dir, '-f', $dots_makefile, $target
+    );
+}
 
 =encoding utf8
 
@@ -552,10 +524,10 @@ Unix dot file management and sharing
 
 =head1 QUICK INSTALL
 
-Just run these 2 commands for a basic ... setup. 
-
     > git clone git://github.com/ingydotnet/....git
-    > ./.../...
+    > .../... conf .../example.conf
+    > .../... update
+    > .../... install
 
 =head1 SYNOPSIS
 
@@ -563,12 +535,14 @@ NOTE: In the following lines, '> ' is a command line prompt, and
       C<'...'> is the literal name of this program.
 
     > ... help                  # Get help
+    > ... conf <path-or-url>    # Copy a ... conf from a file or url
     > ... backup                # Backup your old dot files
-    > ... list                  # List the source files that will install
     > ... install               # Install your dot files
+    > ... list                  # List the source files that will install
+    > ... status                # Check status of your dot file repos
+    > ... conflicts             # Show dot file collisions
     > ... update                # Update your dot files
     > ... upgrade               # Do update and then install.
-    > ... status                # Check status of your dot file repos
     > ... remove                # Remove all installed dot files
     > ... restore ~/.../backup/20101112-235947/
 
