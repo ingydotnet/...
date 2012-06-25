@@ -34,7 +34,7 @@ function ...quieteach {
     )
 }
 ...EACH() {(
-    DOTDOTDOT_ORDER="$HOME/... $HOME/.dots-conf $DOTDOTDOT_ORDER"
+    DOTDOTDOT_ORDER="$HOME/... $DOTDOTDOT_ORDER"
     ...each "$@"
 )}
 function ...eachsource {
