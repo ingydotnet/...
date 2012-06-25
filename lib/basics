@@ -14,7 +14,6 @@ fi
 source ~/.../lib/scripting
 source ~/.../lib/path-manip
 
-...source ~/.../lib/path-manip
 ...path-prepend ~/.../bin
 ...path-prepend ~/bin
 
