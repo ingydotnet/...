@@ -377,7 +377,7 @@ sub do_remove {
 sub do_env {
     my $class = shift;
     print <<EOT
-# See http://github.com/ingydotnet/boot-dots for ideas on how to use these
+: See http://github.com/sharpsaw/loop-dots for ideas on how to use these;
 export DOTDOTDOT_ROOT='$root_dir';
 export DOTDOTDOT_ORDER='${\ join ' ', map $_->{path}, $class->_all_dot_paths}';
 EOT
