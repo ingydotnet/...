@@ -17,7 +17,7 @@ Commands:
 	      - Put content into the .../conf configuration file.
     backup    - Backup all the dot files that would be changed by 'install'.
     install   - Copy or link all the dot files into your $HOME directory.
-      -l | --links    Use hardlinks (default)
+      -h | --hardlink Use hardlinks (default)
       -s | --symlink  Use symlinks
       -f | --copy     Full copy
     list      - List all the full paths of the files that would be installed.
@@ -253,15 +253,14 @@ sub do_install {
     my $all_files = $class->_all_files;
     my $method = $cli_install_method || $config->{install_method};
     my $n = 0;
-    my $type =
-        $method eq 'copy' ? "f" :
-        $method eq 'link' ? "l" :
-        $method eq 'symlink' ? "s" :
-        die "Invalid install method '$method'";
+    my $n_skipped = 0;
     for my $file (sort keys %$all_files) {
         my $src = "$all_files->{$file}/$file";
         my $dst = "$home_dir/$file";
-        next if $class->_up_to_date($src, $dst, $type);
+        if ($class->_up_to_date($src, $dst, $method)) {
+            $n_skipped++;
+            next;
+        }
         $n++;
         my $dir = $dst;
         $dir =~ s/(.*\/).*/$1/;
@@ -269,14 +268,22 @@ sub do_install {
             File::Path::mkpath($dir) >= 1 or die "Can't make path '$dir'";
         }
         unlink $dst;
-        my $cmd =
-            $method eq 'copy' ? "cp $src $dst" :
-            $method eq 'link' ? "ln $src $dst" :
-            $method eq 'symlink' ? "ln -s $src $dst" :
+        if ('copy' eq $method) {
+            $class->_run_sys("cp $src $dst");
+        } elsif ('hardlink' eq $method) {
+            print "> ln $src $dst\n";
+            link $src, $dst or fatal_error("Could not hardlink $src to $dst");
+        } elsif ('symlink' eq $method) {
+            print "> ln -s $src $dst\n";
+            symlink $src, $dst or fatal_error("Could not symlink $src to $dst");
+        } else {
             die "Invalid install method '$method'";
-        $class->_run_sys($cmd);
+        }
     }
-    print "Installed $n new dot files\n";
+    my $total = $n + $n_skipped;
+    my $verbed = ucfirst $method . 'ed';
+    $verbed =~ s/yed$/ied/;
+    print "Installed $total dot files. (Skipped $n_skipped | $verbed $n)\n";
 }
 
 sub do_list {
@@ -393,6 +400,73 @@ sub do_version {
     print "This is '...' version '$VERSION'\n\n";
 }
 
+# This is inside this file because of the odd tricks with the fat-packed libs
+# giving me a slight bit of trouble with loading this file from another file
+# in t/. I didn't look too close, though. —☈king
+sub do_unittest {
+    my $class = shift;
+    chdir or die $!;
+    chdir '.../t' or die $!;
+    $class->_quiet_run_sys('rm -rf tmp');
+    $class->_quiet_run_sys('mkdir tmp');
+    $class->_quiet_run_sys('cp ../... tmp/an-example');
+    $class->_quiet_run_sys('cp echo-foo tmp/another-example');
+    chdir 'tmp' or die $!;
+    $class->_quiet_run_sys('cp an-example a-copy');
+    $class->_quiet_run_sys('cp an-example modified-copy');
+    $class->_quiet_run_sys('echo foo >> modified-copy');
+    $class->_quiet_run_sys('ln an-example a-hardlink');
+    $class->_quiet_run_sys('ln -s an-example a-symlink');
+    $class->_quiet_run_sys('ln -s a-symlink double-symlink');
+    $class->_quiet_run_sys('ln -s another-example another-symlink');
+    $class->_quiet_run_sys('ln -s non-existent a-bad-symlink');
+
+    for my $case (
+        [ qw(0 copy     an-example no-exist) ],
+        [ qw(0 hardlink an-example no-exist) ],
+        [ qw(0 symlink  an-example no-exist) ],
+
+        [ qw(0 copy     an-example modified-copy) ],
+        [ qw(0 hardlink an-example modified-copy) ],
+        [ qw(0 symlink  an-example modified-copy) ],
+
+        [ qw(0 copy     an-example a-bad-symlink) ],
+        [ qw(0 hardlink an-example a-bad-symlink) ],
+        [ qw(0 symlink  an-example a-bad-symlink) ],
+
+        [ qw(1 copy     an-example a-copy) ],
+        [ qw(0 hardlink an-example a-copy) ],
+        [ qw(0 symlink  an-example a-copy) ],
+
+        [ qw(0 copy     an-example a-hardlink) ],
+        [ qw(1 hardlink an-example a-hardlink) ],
+        [ qw(0 symlink  an-example a-hardlink) ],
+
+        [ qw(0 copy     an-example an-example) ],
+        [ qw(1 hardlink an-example an-example) ],
+        [ qw(0 symlink  an-example an-example) ],
+
+        [ qw(0 copy     an-example a-symlink) ],
+        [ qw(0 hardlink an-example a-symlink) ],
+        [ qw(1 symlink  an-example a-symlink) ],
+
+        [ qw(0 copy     an-example a-bad-symlink) ],
+        [ qw(0 hardlink an-example a-bad-symlink) ],
+        [ qw(0 symlink  an-example a-bad-symlink) ],
+
+        [ qw(0 copy     a-symlink another-symlink) ],
+        [ qw(0 hardlink a-symlink another-symlink) ],
+        [ qw(0 symlink  a-symlink another-symlink) ],
+    ) {
+        my ($expected, $method, $x, $y) = @$case;
+        my $actual = $class->_up_to_date($x, $y, $method);
+        warn "Expected $expected, got $actual, "
+            . "for $method comparison for $x vs. $y to be $expected\n"
+            unless ($expected and $actual) or (!$expected and !$actual);
+    }
+    $class->_quiet_run_sys('cd ..; rm -r tmp');
+}
+
 #-------------------------------------------------------------------------------
 # Helper methods
 #-------------------------------------------------------------------------------
@@ -409,6 +483,10 @@ sub _run_sys {
     my ($class, @cmd) = @_;
     local $" = ' ';
     print "> @cmd\n";
+    $class->_quiet_run_sys(@cmd);
+}
+sub _quiet_run_sys {
+    my ($class, @cmd) = @_;
     system(@cmd) == 0 or fatal_error "Failed to: @cmd";
 }
 
@@ -418,18 +496,31 @@ sub _up_to_date {
     my $class = shift;
     my $src = shift;
     my $dst = shift;
-    my $type = shift;
+    my $method = shift;
     die "Error: '$src' file does not exist" unless -f $src;
-    return 0 if not -e $dst;
-    if (-l $dst) {
-        return 0 if $type =~ /^[fs]/;
-        return readlink($dst) eq $src;
-    }
     return 0 if -s $dst != -s $src;
-    open S, $src or die;
-    open D, $dst or die;
-    local $/;
-    return <S> eq <D>;
+    if ('symlink' eq $method) {
+        return readlink($dst) eq $src
+    }
+    return $class->_up_to_date($src, $dst, 'symlink') if -l $src;
+    return 0 if -l $src ne -l $dst;
+    if ('copy' eq $method) {
+        return 0 if _inode_of($src) == _inode_of($dst);
+        open S, $src or die;
+        open D, $dst or die;
+        local $/;
+        return <S> eq <D>
+    } elsif ('hardlink' eq $method) {
+        return _inode_of($src) == _inode_of($dst)
+    } else {
+        die "Invalid method $method."
+    }
+}
+
+sub _inode_of {
+    my $file_name = shift;
+    my ($dev, $ino) = stat $file_name;
+    return $ino
 }
 
 # Check if a file needs to be updated or not
@@ -627,7 +718,7 @@ There are 3 possible ways to install your dot files:
     * copy from source
 
 You can change this with the C<install_method> configuration setting. You can
-also use the C<-l | --link> and C<-s | --symlink> options of the install
+also use the C<-h | --hardlink> and C<-s | --symlink> options of the install
 subcommand to override this from the command line.
 
 Using links is preferable. That way if you change a dot file in your
