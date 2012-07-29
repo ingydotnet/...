@@ -280,6 +280,7 @@ sub do_install {
             die "Invalid install method '$method'";
         }
     }
+    $class->_check_deps;
     my $total = $n + $n_skipped;
     my $verbed = ucfirst $method . 'ed';
     $verbed =~ s/yed$/ied/;
@@ -561,8 +562,10 @@ sub _all_files {
         for my $file (`(cd $path; find . -type f -o -type l)`) {
             $file =~ s!^\./!!;
             chomp($file);
-            next if $file =~ /^\.git\/|(\.sw.|~)$/;
             next unless $file =~ /^(?:\.|bin\/)/;
+            next if $file =~ /(\.sw.|~)$/;
+            next if $file =~ /^\.git(|ignore|modules)\/?/;
+            next if $file =~ /^\.\.\.(Makefile|deps)/;
             if (! $all_files->{$file}) {
                 $all_files->{$file} = $path;
             }
@@ -605,6 +608,29 @@ sub _make {
     $class->_run_sys(
         'make', '-C', $dots_dir, '-f', $dots_makefile, $target
     );
+}
+
+sub _slurp_file {
+    my ($class, $file_name) = @_;
+    local $/ = undef;
+    local *FH;
+    fatal_error("Couldn't read $file_name") unless open(FH, $file_name);
+    return <FH>
+}
+
+sub _check_deps {
+    my $class = shift;
+    for my $dphr ($class->_all_dot_paths) {
+        my $dots_dir = $dphr->{path};
+        my $deps_file_name = "$dots_dir/...deps";
+        next unless -f $deps_file_name;
+        my $contents = $class->_slurp_file($deps_file_name);
+        for my $expected_repo (split /\s+/, $contents) {
+            -d "$dots_dir/../$expected_repo"
+                or fatal_error "Couldn't find repo: $expected_repo, "
+                    . "requested by $deps_file_name";
+        }
+    }
 }
 
 =encoding utf8
