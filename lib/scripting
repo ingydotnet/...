@@ -21,7 +21,7 @@ alias ...src=...repo # "...src" is a bit confusing vs. "...source", but hey.
 function ...each {
     (
         for dir in `echo $DOTDOTDOT_ORDER`; do
-            ...info "[In $dir]"
+            ...info "[ In $dir ]"
             ( builtin cd $dir; eval "$@" )
         done
     )
