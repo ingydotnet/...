@@ -4,7 +4,7 @@ source "$HOME/.../lib/tracefuncs"
 
 # Hop to a repo for quick git'ing.
 ...repo() {
-    cd "$HOME/.../src"
+    builtin cd "$HOME/.../src"
     if [ -z "$1" ]; then
         return
     fi
