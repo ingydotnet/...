@@ -1,24 +1,41 @@
 source ~/.../lib/assert-decent-shell || return
 
 source "$HOME/.../lib/tracefuncs"
-function ...repo {
+
+# Hop to a repo for quick git'ing.
+...repo() {
+    cd "$HOME/.../src"
     if [ -z "$1" ]; then
-        cd "$HOME/.../src"
         return
     fi
-    if [ -e "$HOME/.../src/$1" ]; then
-        cd $1
-    elif [ -e "$HOME/.../src/$1-dots" ]; then
-        cd "$HOME/.../src/$1-dots"
+    if [ -e "$1" ]; then
+        cd "$1"
+    elif [ -e "$1-dots" ]; then
+        cd "$1-dots"
     else
         echo "Hrm. Not sure what to do with \`$1\`."
-        cd "$HOME/.../src"
     fi
 }
 alias ...src=...repo # "...src" is a bit confusing vs. "...source", but hey.
 
+# Hop to the repo owning the named file and edit it from there.
+...@() {
+    if [ ! -e "$1" ]; then
+        echo "File doesn't exist: $1"
+        return
+    fi
+    cd $(dirname $(readlink "$1"))
+    ${VISUAL:-${EDITOR:-vim}} "$1"
+
+    # This is a little bit of an odd dependency placement, but it's handy to
+    # see the quiet-status after an edit
+    # (see: http://github.com/sharpsaw/git-dots )
+    [ -e ~/.../src/git-dots ] && gq
+}
+
+
 # These next funcs are copy&pasted. Fix soon. -rking
-function ...each {
+...each() {
     (
         for dir in `echo $DOTDOTDOT_ORDER`; do
             ...info "[ In $dir ]"
@@ -26,7 +43,7 @@ function ...each {
         done
     )
 }
-function ...quieteach {
+...quieteach() {
     (
         for dir in `echo $DOTDOTDOT_ORDER`; do
             ( builtin cd $dir; eval "$@" )
@@ -37,7 +54,7 @@ function ...quieteach {
     DOTDOTDOT_ORDER="$HOME/... $DOTDOTDOT_ORDER"
     ...each "$@"
 )}
-function ...eachsource {
+...eachsource() {
     if [ -z "$ZSH_VERSION" ]; then
         echo "...eachsource only implemented for zsh (TODO)."
         return
