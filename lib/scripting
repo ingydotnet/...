@@ -20,17 +20,38 @@ alias ...src=...repo # "...src" is a bit confusing vs. "...source", but hey.
 
 # Hop to the repo owning the named file and edit it from there.
 ...@() {
-    if [ ! -e "$1" ]; then
-        echo "File doesn't exist: $1"
-        return
+    local file_name="$1"
+    if [ ! -e "$file_name" ]; then
+        file_name="`which $1`"
+        if [ ! -e "$file_name" ]; then
+            file_name="$HOME/$1"
+            if [ ! -e "$file_name" ]; then
+                echo "Couldn't locally or in \$PATH or in \$HOME: $1"
+                return
+            fi
+        fi
     fi
-    cd $(dirname $(readlink "$1"))
-    ${VISUAL:-${EDITOR:-vim}} "$1"
+    if [ -L "$file_name" ]; then
+        file_name=$(readlink "$file_name")
+    fi
+    local dir=$(dirname "$file_name")
+    echo "Editing $file_name (in $dir)"
+    builtin cd "$dir"
+    ${VISUAL:-${EDITOR:-vim}} "$file_name"
 
-    # This is a little bit of an odd dependency placement, but it's handy to
-    # see the quiet-status after an edit
-    # (see: http://github.com/sharpsaw/git-dots )
-    [ -e ~/.../src/git-dots ] && gq
+    if [ ! -d .git -a "$HOME" != "`pwd`" ]; then
+        cd ..
+    fi
+    if [ -d .git ]; then
+        # (see: http://github.com/sharpsaw/git-dots for `gq`, the quiet-status)
+        if [ -e ~/.../src/git-dots ]; then
+            gq
+        else
+            git status
+        fi
+    else
+        pwd
+    fi
 }
 
 
