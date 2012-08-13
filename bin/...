@@ -580,7 +580,7 @@ sub _all_files {
             chomp($file);
             next unless $file =~ /^(?:\.|bin\/)/;
             next if $file =~ /(\.sw.|~)$/;
-            next if $file =~ /^\.git(|ignore|modules)\/?/;
+            next if $file =~ /^\.git(|ignore|modules)\b\/?/;
             next if $file =~ /^\.\.\.(Makefile|deps)/;
             if (! $all_files->{$file}) {
                 $all_files->{$file} = $path;
