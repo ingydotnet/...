@@ -466,6 +466,18 @@ sub do_unittest {
             unless ($expected and $actual) or (!$expected and !$actual);
     }
     $class->_quiet_run_sys('cd ..; rm -r tmp');
+
+    for my $case (
+        [ {path => 'explicit-path' } => 'explicit-path' ],
+        [ {repo => 'git@github.com/foo/ssh-url.git' } => 'ssh-url' ],
+        [ {repo => 'https://github.com/foo/https-url' } => 'https-url' ],
+        [ {repo => 'https://github.com/foo/slash-url/' } => 'slash-url' ],
+    ) {
+        my ($input, $expected) = @$case;
+        my $actual = $class->_deduce_path($input);
+        warn "Expected $expected, got $actual\n"
+            unless $expected eq $actual;
+    }
 }
 
 #-------------------------------------------------------------------------------
@@ -530,12 +542,7 @@ sub _all_dot_paths {
     my @paths;
     for my $entry (@{$config->{dots}}) {
         my $result = {};
-        my $path = $entry->{path} || do {
-            my $repo = $entry->{repo};
-            $repo =~ s!.*?([^/]+)/?.git$!$1!;
-            $repo;
-        };
-        die unless $path;
+        my $path = $class->_deduce_path($entry) || fatal_error "No path found";
         if ($path !~ /^\//) {
             $path = "$config->{dot_paths_base}/$path";
         }
@@ -549,6 +556,15 @@ sub _all_dot_paths {
         push @paths, $result;
     }
     return @paths;
+}
+
+sub _deduce_path {
+    my ($class, $entry) = @_;
+    return $entry->{path} if $entry->{path};
+    my $repo = $entry->{repo} || fatal_error "Missing repo?";
+    $repo =~ s!.*?([^/]+)?/?$!$1!;
+    $repo =~ s/\.git$//;
+    $repo
 }
 
 # Find all the valid 'dot' files for various operations.
