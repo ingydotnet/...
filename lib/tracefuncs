@@ -29,16 +29,16 @@ function ...echo_purple {
 }
 
 function ...debug {
-    ...istracing && ...echo_blue "$@"
+    ...istracing && ...echo_blue "$@" || true
 }
 function ...debug2 {
-    ...istracing && ...echo_cyan "$@"
+    ...istracing && ...echo_cyan "$@" || true
 }
 function ...debug3 {
-    ...istracing && ...echo_purple "$@"
+    ...istracing && ...echo_purple "$@" || true
 }
 function ...debug4 {
-    ...istracing && ...echo_green "$@"
+    ...istracing && ...echo_green "$@" || true
 }
 
 function ...info {
@@ -109,13 +109,13 @@ function ...tracex {
 }
 # On these next ones, don't forget about calling with -x for more loudness:
 function ...tracei { ## "interactive"
-    ...traceq "$@" -i # TODO: verify that this works.
+    ...traceq "$@" -i
 }
 function ...tracel { ## "login"
-    ...traceq "$@" -l # TODO: verify that this works.
+    ...traceq "$@" -l
 }
 function ...tracef { ## zsh has this as --no-rcs
-    ...traceq "$@" -f # TODO: verify that this works.
+    ...traceq "$@" -f
 }
 
 # vim:ft=zsh
