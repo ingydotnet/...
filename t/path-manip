@@ -1,0 +1,7 @@
+#!/bin/sh
+echo "# This is a lazy test. Just look at the output to figure out if it's OK"
+echo "# bash"
+bash -c 'source _path-manip'
+echo
+echo "# now zsh"
+zsh -c 'source _path-manip'

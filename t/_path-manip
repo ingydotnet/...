@@ -1,0 +1,11 @@
+source ../lib/path-manip
+ok() { echo -n "$@ "; read; eval "$@"; ...path-list; }
+
+...path-list
+echo "# (☝ starting \$PATH)"
+ok ...path-prepend early
+ok ...path-remove early
+ok ...path-append late-then-early
+ok ...path-prepend late-then-early
+
+# vim:ft=zsh
