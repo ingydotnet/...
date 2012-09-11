@@ -183,9 +183,9 @@ sub setup {
         $config->{auto_backup} =~ /^(off|false|0)$/ ? 0 :
         die "Error: invalid value for conf setting 'auto_backup'\n";
 
-    $config->{install_method} ||= 'link';
+    $config->{install_method} ||= 'hardlink';
     die "Error: invalid value for conf setting 'install_method'\n"
-        unless $config->{install_method} =~ /^(link|symlink|copy)$/;
+        unless $config->{install_method} =~ /^(hardlink|symlink|copy)$/;
 
     my ($sec, $min, $hour, $day, $mon, $year) = localtime(time);
     $year += 1900;
