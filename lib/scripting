@@ -19,7 +19,7 @@ source "$HOME/.../lib/tracefuncs"
 alias ...src=...repo # "...src" is a bit confusing vs. "...source", but hey.
 
 # Hop to the repo owning the named file and edit it from there.
-...@() {
+function ...@ {
     local file_name="$1"
     if [ ! -e "$file_name" ]; then
         file_name="`which $1`"
