@@ -343,7 +343,9 @@ sub do_update {
                 warn "$path exists, but is not a git repo. Ignoring.";
             }
             else {
-                $class->_run_sys("(cd $path; git pull)");
+                my $pull = 'git pull';
+                my $submods = 'git submodule update --init';
+                $class->_run_sys("(cd $path; $pull; $submods)");
                 $class->_make(update => $path);
             }
         }
