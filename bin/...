@@ -230,7 +230,7 @@ sub do_backup {
     my $quiet = shift or 0;
     my $backup_dir = "$root_dir/backup/$timestamp";
     my $backup_list_file = "$root_dir/tmp/$timestamp-backup-list";
-    print "Backing up your dot files to $backup_dir/\n";
+    print color(32, "Backing up your dot files to $backup_dir/\n");
     open F, "> $backup_list_file";
     my $n = 0;
     for my $file (sort keys %{$class->_all_files}) {
@@ -242,13 +242,13 @@ sub do_backup {
     close F;
     my $cmd = "(cd $home_dir; cat $backup_list_file | cpio -dump $backup_dir)";
     $class->_run_sys($cmd);
-    print "Backed up $n dot files to $backup_dir\n";
+    print color(32, "Backed up $n dot files to $backup_dir\n");
 }
 
 sub do_install {
     my $class = shift;
     $class->do_backup('quiet') if $config->{auto_backup};
-    print "Installing your dot files:\n";
+    print color(34, "Installing your dot files:\n");
     $class->_each_make('install');
     my $all_files = $class->_all_files;
     my $method = $cli_install_method || $config->{install_method};
@@ -271,26 +271,35 @@ sub do_install {
         if ('copy' eq $method) {
             $class->_run_sys("cp $src $dst");
         } elsif ('hardlink' eq $method) {
-            print "> ln $src $dst\n";
+            cmd_print(35, "ln $src $dst");
             link $src, $dst or fatal_error("Could not hardlink $src to $dst");
         } elsif ('symlink' eq $method) {
-            print "> ln -s $src $dst\n";
+            cmd_print("36;1", "ln -s $src $dst");
             symlink $src, $dst or fatal_error("Could not symlink $src to $dst");
         } else {
             die "Invalid install method '$method'";
         }
     }
     $class->_check_deps;
-    my $total = $n + $n_skipped;
-    my $verbed = ucfirst $method . 'ed';
-    $verbed =~ s/yed$/ied/;
-    print "Installed $total dot files. (Skipped $n_skipped | $verbed $n)\n";
+    print _install_report_for($n, $n_skipped, $method);
     my @watched_dirs =
         grep { -d } map { "$home_dir$_" } '', qw(.vim .sh .zsh .bash);
     for my $bad ($class->_find_dead_symlinks(@watched_dirs)) {
-        print "Removing dead symlink: $bad\n";
+        print "Removing dead symlink: ", color("31;1", $bad), "\n";
         unlink $bad or warn "Weird. Couldn't unlink('$bad').";
     }
+}
+
+sub _install_report_for {
+    my ($n, $n_skipped, $method) = @_;
+    my $total = color(34, $n + $n_skipped) . ' installed files.';
+    my @parenthetical = ();
+    push @parenthetical, color(33, $n_skipped) . ' skipped' if $n_skipped;
+    my $verbed = ucfirst $method . 'ed';
+    $verbed =~ s/yed$/ied/;
+    push @parenthetical, color(32, $n) . " $verbed" if $n;
+    my $parenthetical = join " | ", @parenthetical;
+    "$total ($parenthetical)\n";
 }
 
 sub do_list {
@@ -497,16 +506,26 @@ sub do_unittest {
 sub fatal_error {
     my $msg = shift;
     die "$msg\n" unless -t STDERR;
-    warn "...\e[31;1m$msg\e[0m\n";
+    warn "...", color(31, $msg), "\n";
     print STDERR "  Hit Enter to try to continue anyway, or Ctrl+c to stop:";
     <STDIN>;
+}
+
+sub color {
+    my ($color, $text) = @_;
+    "\e[${color}m$text\e[0m"
+}
+
+sub cmd_print {
+    my ($color, @cmd) = @_;
+    print '> ', color($color, "@cmd\n");
 }
 
 # Run a system command (and print it too)
 sub _run_sys {
     my ($class, @cmd) = @_;
     local $" = ' ';
-    print "> @cmd\n";
+    cmd_print(36, @cmd);
     $class->_quiet_run_sys(@cmd);
 }
 sub _quiet_run_sys {
