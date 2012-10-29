@@ -331,7 +331,7 @@ sub do_update {
         my $repo = $entry->{repo} || '';
         if (! -d $path) {
             if ($repo) {
-                $class->_run_sys("git clone --recursive $repo $path");
+                $class->_run_sys("git clone --depth 1 --recursive $repo $path");
                 $class->_make(update => $path);
             }
             else {
