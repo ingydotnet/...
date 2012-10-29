@@ -285,6 +285,12 @@ sub do_install {
     my $verbed = ucfirst $method . 'ed';
     $verbed =~ s/yed$/ied/;
     print "Installed $total dot files. (Skipped $n_skipped | $verbed $n)\n";
+    my @watched_dirs =
+        grep { -d } map { "$home_dir$_" } '', qw(.vim .sh .zsh .bash);
+    for my $bad ($class->_find_dead_symlinks(@watched_dirs)) {
+        print "Removing dead symlink: $bad\n";
+        unlink $bad or warn "Weird. Couldn't unlink('$bad').";
+    }
 }
 
 sub do_list {
@@ -465,6 +471,9 @@ sub do_unittest {
             . "for $method comparison for $x vs. $y to be $expected\n"
             unless ($expected and $actual) or (!$expected and !$actual);
     }
+    my @reapworthy = $class->_find_dead_symlinks('.');
+    1 == scalar @reapworthy and './a-bad-symlink' eq $reapworthy[0]
+        or die "_find_dead_symlinks failed (@reapworthy)";
     $class->_quiet_run_sys('cd ..; rm -r tmp');
 
     for my $case (
@@ -501,6 +510,20 @@ sub _run_sys {
 sub _quiet_run_sys {
     my ($class, @cmd) = @_;
     system(@cmd) == 0 or fatal_error "Failed to: @cmd";
+}
+
+sub _find_dead_symlinks {
+    my ($class, @dirs) = @_;
+    my @reaped = ();
+    for my $dir (@dirs) {
+        opendir my $dh, $dir or fatal_error("Couldn't open $dir");
+        while (readdir $dh) {
+            my $filename = "$dir/$_";
+            next unless -l $filename;
+            push @reaped, $filename if not -e $filename;
+        }
+    }
+    @reaped
 }
 
 # Check is a file needs to be updated or not. Deals with files, links and
