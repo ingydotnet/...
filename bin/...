@@ -282,11 +282,19 @@ sub do_install {
     }
     $class->_check_deps;
     print _install_report_for($n, $n_skipped, $method);
-    my @watched_dirs =
-        grep { -d } map { "$home_dir$_" } '', qw(.vim .sh .zsh .bash);
-    for my $bad ($class->_find_dead_symlinks(@watched_dirs)) {
-        print "Removing dead symlink: ", color("31;1", $bad), "\n";
-        unlink $bad or warn "Weird. Couldn't unlink('$bad').";
+    if ('symlink' eq $method) {
+        my @watched_dirs = qw(bin .sh .zsh .bash .vim);
+        print "  Checking for dead symlinks in @watched_dirs\n";
+        my @full_watched_dirs =
+            grep { -d } map { "$home_dir$_" } '', @watched_dirs;
+        my @bad_symlinks = $class->_find_dead_symlinks(@full_watched_dirs);
+        for my $bad (@bad_symlinks) {
+            print "    Removing: ", color("31;1", $bad), "\n";
+            unlink $bad or warn "Weird. Couldn't unlink('$bad').";
+        }
+        if (0 == @bad_symlinks) {
+            print "    (None found.)\n";
+        }
     }
 }
 
@@ -438,6 +446,8 @@ sub do_unittest {
     $class->_quiet_run_sys('ln -s a-symlink double-symlink');
     $class->_quiet_run_sys('ln -s another-example another-symlink');
     $class->_quiet_run_sys('ln -s non-existent a-bad-symlink');
+    $class->_quiet_run_sys('mkdir dir');
+    $class->_quiet_run_sys('ln -s non-existent dir/another-bad-symlink');
 
     for my $case (
         [ qw(0 copy     an-example no-exist) ],
@@ -483,7 +493,9 @@ sub do_unittest {
             unless ($expected and $actual) or (!$expected and !$actual);
     }
     my @reapworthy = $class->_find_dead_symlinks('.');
-    1 == scalar @reapworthy and './a-bad-symlink' eq $reapworthy[0]
+    2 == scalar @reapworthy
+      and './a-bad-symlink' eq $reapworthy[0]
+      and './dir/another-bad-symlink' eq $reapworthy[1]
         or die "_find_dead_symlinks failed (@reapworthy)";
     $class->_quiet_run_sys('cd ..; rm -r tmp');
 
@@ -539,9 +551,12 @@ sub _find_dead_symlinks {
     for my $dir (@dirs) {
         opendir my $dh, $dir or fatal_error("Couldn't open $dir");
         while (readdir $dh) {
-            my $filename = "$dir/$_";
-            next unless -l $filename;
-            push @reaped, $filename if not -e $filename;
+            my $path = "$dir/$_";
+            if (-l $path) {
+                push @reaped, $path if not -e $path;
+            } elsif (-d $path and $path !~ /\/\.\.?$/) {
+                push @reaped, $class->_find_dead_symlinks($path);
+            }
         }
     }
     @reaped
