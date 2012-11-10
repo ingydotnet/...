@@ -28,6 +28,10 @@ Commands:
     restore   - Restore a backup.
     remove    - DELETE all the dot files in $HOME that would be installed!!!
     env       - Get input for a shell eval `... env`, useful for scripting.
+    super_update         - paralllel update
+    sup                  - alias for super_update
+    super_update_install - paralllel update + install
+    supi                 - alias for super_update_install
     help      - Print this help and exit.
 
 Options:
@@ -298,6 +302,15 @@ sub do_install {
     }
 }
 
+sub do_super_update_install {
+    my $class = shift;
+    $class->do_super_update;
+    $class->do_install;
+}
+
+sub do_supi { (shift)->do_super_update_install(@_) }
+sub do_super_upgrade { (shift)->do_super_update_install(@_) }
+
 sub _install_report_for {
     my ($n, $n_skipped, $method) = @_;
     my $total = color(34, $n + $n_skipped) . ' installed files.';
@@ -344,27 +357,48 @@ sub do_update {
     my $class = shift;
     print "Updating your `...` system and dot files:\n";
     for my $entry ($root_entry, $class->_all_dot_paths) {
-        my $path = $entry->{path};
-        my $repo = $entry->{repo} || '';
-        if (! -d $path) {
-            if ($repo) {
-                $class->_run_sys("git clone --depth 1 --recursive $repo $path");
-                $class->_make(update => $path);
-            }
-            else {
-                die "$path does not exist and there is not 'repo' entry";
-            }
+        $class->_update_one($entry);
+    }
+}
+
+sub do_super_update {
+    my $class = shift;
+    print "Updating your `...` system and dot files... " .
+        color('32;1', 'in parallel') . "!\n";
+    for my $entry ($root_entry, $class->_all_dot_paths) {
+        if (!fork) {
+            $class->_update_one($entry);
+            exit;
+        }
+    }
+    wait;
+}
+
+sub do_sup { (shift)->do_super_update(@_) }
+
+sub _update_one {
+    my $class = shift;
+    my $entry = shift;
+    my $path = $entry->{path};
+    my $repo = $entry->{repo} || '';
+    if (! -d $path) {
+        if ($repo) {
+            $class->_run_sys("git clone --depth 1 --recursive $repo $path");
+            $class->_make(update => $path);
         }
         else {
-            if (! -d "$path/.git") {
-                warn "$path exists, but is not a git repo. Ignoring.";
-            }
-            else {
-                my $pull = 'git pull';
-                my $submods = 'git submodule update --init';
-                $class->_run_sys("(cd $path; $pull; $submods)");
-                $class->_make(update => $path);
-            }
+            die "$path does not exist and there is not 'repo' entry";
+        }
+    }
+    else {
+        if (! -d "$path/.git") {
+            warn "$path exists, but is not a git repo. Ignoring.";
+        }
+        else {
+            my $pull = 'git pull';
+            my $submods = 'git submodule update --init';
+            $class->_run_sys("(cd $path; $pull; $submods)");
+            $class->_make(update => $path);
         }
     }
 }
