@@ -287,11 +287,10 @@ sub do_install {
     $class->_check_deps;
     print _install_report_for($n, $n_skipped, $method);
     if ('symlink' eq $method) {
-        my @watched_dirs = qw(bin .sh .zsh .bash .vim);
-        print "  Checking for dead symlinks in @watched_dirs\n";
-        my @full_watched_dirs =
-            grep { -d } map { "$home_dir$_" } '', @watched_dirs;
-        my @bad_symlinks = $class->_find_dead_symlinks(@full_watched_dirs);
+        my @watched_dirs = map { "$home_dir/$_" } qw(bin .sh .zsh .bash .vim);
+        my @existing_watched_dirs = grep { -d } @watched_dirs;
+        print "  Checking for dead symlinks in @existing_watched_dirs\n";
+        my @bad_symlinks = $class->_find_dead_symlinks(@existing_watched_dirs);
         for my $bad (@bad_symlinks) {
             print "    Removing: ", color("31;1", $bad), "\n";
             unlink $bad or warn "Weird. Couldn't unlink('$bad').";
