@@ -364,13 +364,17 @@ sub do_super_update {
     my $class = shift;
     print "Updating your `...` system and dot files... " .
         color('32;1', 'in parallel') . "!\n";
+    my @kids = ();
     for my $entry ($root_entry, $class->_all_dot_paths) {
-        if (!fork) {
+        my $kidpid = fork;
+        if (!$kidpid) {
             $class->_update_one($entry);
             exit;
+        } else {
+            push @kids, $kidpid;
         }
     }
-    wait;
+    waitpid $_, 0 for @kids;
 }
 
 sub do_sup { (shift)->do_super_update(@_) }
