@@ -84,7 +84,7 @@ INSTALLATION
         > git clone git://github.com/ingydotnet/ingy-dots.git personal
         > svn checkout your/svn/dot/file/repo private
         > cd ..
-        > cp conf.example conf
+        > cp example.conf conf
         > vim conf              # Edit the ... configuration file
         > cd $HOME
         > .../bin/... -h        # Show ... help info
