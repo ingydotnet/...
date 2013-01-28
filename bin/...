@@ -86,7 +86,7 @@ Error: '$conf_file' does not exist.
 
 Run `... conf <path-or-url>` to set it up.
 
-You can also copy $root_dir/conf.example to $conf_file
+You can also copy $root_dir/example.conf to $conf_file
 and edit appropriately.
 
 ...
@@ -838,7 +838,7 @@ To install "...", run these commands in your Unix shell:
     > git clone git://github.com/ingydotnet/ingy-dots.git personal
     > svn checkout your/svn/dot/file/repo private
     > cd ..
-    > cp conf.example conf
+    > cp example.conf conf
     > vim conf              # Edit the ... configuration file
     > cd $HOME
     > .../bin/... -h        # Show ... help info
