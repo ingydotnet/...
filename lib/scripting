@@ -112,20 +112,14 @@ alias sourceif=...sourceif # Backwards compatibility.
     d=$1
     [ -d $d ] || return
     ...debug2 "Sourcing contents of $d/*"
-    if [ -z "$TRACE_DIRSOURCE" ]; then
-        ...debug2 " (run with TRACE_DIRSOURCE=1 to view)"
-    else
-        cat $d/*
-    fi
-    find $d -name '.*.sw?' -exec echo '{}' is probably going to be trouble. \;
-    source <(cat $d/*)
+    source <(find $d/* -prune \! -type d \! -name '.*.sw?' -exec cat {} +)
     if [ $? != 0 ]; then
         (
             ...traceon
             ...warn "Oops. Had a problem. Trying $d/* individually to debug:"
             for n in $d/*; do
                 ...source $n
-                ...debug3 "(Exit code: $?)"
+                [ $? != 0 ] && ...debug3 "(Exit code: $?)"
             done
         )
     fi
