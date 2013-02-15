@@ -77,8 +77,9 @@ function ...@ {
 )}
 ...eachsource() {
     if [ -z "$ZSH_VERSION" ]; then
-        echo "...eachsource only implemented for zsh (TODO)."
-        return
+        for n in $DOTDOTDOT_ORDER; do
+            [ -e $n/$1 ] && ...source $n/$1
+        done
     else
         source ~/.../lib/eachsource.zsh "$@"
     fi
@@ -87,6 +88,7 @@ function ...@ {
 # By using this you get ...trace abilities, plus it guards against recursion
 function ...source {
     local fullname="`...fully-qualify $1`"
+    # Once everyone has loop-dots a00e296 or higher, we can simplify:
     if expr "$fullname" : ".*loop-dots" > /dev/null; then
         ...debug2 "(Wisely skipping $fullname, to prevent a loop.)"
     elif expr "$1" : ".*\\.sw.$" > /dev/null; then
