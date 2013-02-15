@@ -26,7 +26,7 @@ function ...@ {
         if [ ! -e "$file_name" ]; then
             file_name="$HOME/$1"
             if [ ! -e "$file_name" ]; then
-                echo "Couldn't locally or in \$PATH or in \$HOME: $1"
+                echo "No '$1' locally, in \$PATH, or in \$HOME"
                 return
             fi
         fi
@@ -42,16 +42,8 @@ function ...@ {
     if [ ! -d .git -a "$HOME" != "`pwd`" ]; then
         cd ..
     fi
-    if [ -d .git ]; then
-        # (see: http://github.com/sharpsaw/git-dots for `gq`, the quiet-status)
-        if [ -e ~/.../src/git-dots ]; then
-            gq
-        else
-            git status
-        fi
-    else
-        pwd
-    fi
+    [ -d .git ] && git status -s
+    pwd
 }
 
 
