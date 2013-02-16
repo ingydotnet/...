@@ -567,7 +567,8 @@ sub color {
 
 sub cmd_print {
     my ($color, @cmd) = @_;
-    print '> ', color($color, "@cmd\n");
+    my @cleaned = map { s/$ENV{HOME}/~/g; $_ } @cmd;
+    print '> ', color($color, "@cleaned\n");
 }
 
 # Run a system command (and print it too)
