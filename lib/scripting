@@ -118,4 +118,9 @@ alias sourceif=...sourceif # Backwards compatibility.
         )
     fi
 }
+
+...vote() {
+    ...quieteach 'git ls-files | xargs show-votes'
+}
+
 # vim:ft=zsh

@@ -1,0 +1,21 @@
+#!/usr/bin/perl -n -0400
+if (s/.*VOTE:\s*(.*?)#?\s*:ETOV/$1/s) {
+    my @lines = map {
+        if (/s(?:ays|ez):?\s*(\w*)/) {
+            my $answer = $1;
+            my $color;
+            if ($anwser =~ /^y/i) {
+              $color = 32
+            } elsif ($answer =~ /^no/i) {
+              $color = 31
+            } elsif ($answer) {
+              $color = 36
+            } else {
+              $color = 35
+            }
+            $_ = "\e[${color}m$_\e[0m";
+        }
+        "$_\n"
+    } split /\n/, $1;
+    print qq{\e[34;1m`pwd`/$ARGV\e[0m\n@lines}
+}
