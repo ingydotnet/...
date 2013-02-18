@@ -1,4 +1,5 @@
 #!/usr/bin/perl -n -0400
+use Cwd;
 if (s/.*VOTE:\s*(.*?)#?\s*:ETOV/$1/s) {
     my @lines = map {
         if (/s(?:ays|ez):?\s*(\w*)/) {
@@ -17,5 +18,6 @@ if (s/.*VOTE:\s*(.*?)#?\s*:ETOV/$1/s) {
         }
         "$_\n"
     } split /\n/, $1;
-    print qq{\e[34;1m`pwd`/$ARGV\e[0m\n@lines}
+    $pwd = cwd();
+    print qq{\e[34;1m$pwd/$ARGV\e[0m\n@lines}
 }
