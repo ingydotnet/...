@@ -106,7 +106,14 @@ alias sourceif=...sourceif # Backwards compatibility.
     d=$1
     [ -d $d ] || return
     ...debug2 "Sourcing contents of $d/*"
-    source <(find $d/* -prune \! -type d \! -name '.*.sw?' -exec cat {} +)
+
+    # XXX This FIFO filename technique does not work on OSX
+    #source <(find $d/* -prune \! -type d \! -name '.*.sw?' -exec cat {} +)
+    # Use this hack for now:
+    find $d/* -prune \! -type d \! -name '.*.sw?' -exec cat {} + > /tmp/$$
+    source /tmp/$$
+    rm /tmp/$$
+
     if [ $? != 0 ]; then
         (
             ...traceon
