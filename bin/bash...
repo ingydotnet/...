@@ -1,0 +1,889 @@
+#!/usr/bin/env bash
+
+set -e
+
+BASHLIB=...
+PATH="$BASHLIB:$PATH"
+
+source bash+ :std
+
+usage = <<'...'
+
+        ... - The Unix Dot File Manager
+
+Usage: ... [options] command [command-options]
+
+Commands:
+    conf conf-file-path | conf-file-url | <stdin>
+	      - Put content into the .../conf configuration file.
+    backup    - Backup all the dot files that would be changed by 'install'.
+    install   - Copy or link all the dot files into your $HOME directory.
+      -h | --hardlink Use hardlinks (default)
+      -s | --symlink  Use symlinks
+      -f | --copy     Full copy
+    list      - List all the full paths of the files that would be installed.
+    status    - Get change status of all the dot repositories.
+    conflicts - Show dot files that collide with ones from other repos.
+    update    - Fetch changes from all the dot repositories.
+    upgrade   - Do update and then install.
+    restore   - Restore a backup.
+    remove    - DELETE all the dot files in $HOME that would be installed!!!
+    env       - Get input for a shell eval `... env`, useful for scripting.
+    super_update         - paralllel update
+    sup                  - alias for super_update
+    super_update_install - paralllel update + install
+    supi                 - alias for super_update_install
+    help      - Print this help and exit.
+
+Options:
+    -v --version    Print the version and exit.
+    -h -?           Same as 'help' command.
+
+For complete documentation, run: 'perldoc ...'
+
+...
+
+# Load modules:
+use Config::Ini
+# use Getopt::Long
+
+VERSION='0.2.0'
+
+#-------------------------------------------------------------------------------
+# Processing starts here
+#-------------------------------------------------------------------------------
+main() {
+  # $HOME env
+  local home_dir=${HOME:?'Error: $HOME not set'}
+  local command        # backup, install, etc
+  local handler        # Class method to call
+  # ~/.../
+  local root_dir="$home_dir/..."
+  local root_entry=path:$root_dir
+  # ~/.../conf
+  local conf_file="$root_dir/conf"
+  local config         # Config hash
+  local timestamp      # Time stamp
+  local restore_from   # Directory to restore from
+  local conf_path
+
+  local cli_install_method=
+
+  local no_conf_msg = '\
+Error: '$conf_file' does not exist.
+
+Run `... conf <path-or-url>` to set it up.
+
+You can also copy $root_dir/example.conf to $conf_file
+and edit appropriately.
+
+'
+  parse_command_line
+  [[ "$command" =~ ^(help|version|conf)$ ]] || setup
+  "$handler"
+}
+
+parse_command_line() {
+  if [ $# -eq 0 ]; then
+    command=default
+  else
+    case "$1" in
+    -?|-h|--help)
+      command=help;;
+    -v|--version)
+      command=version;;
+    ls)
+      command=list;;
+    st)
+      command=status;;
+    rm)
+      command=remove;;
+    restore)
+      command=restore
+      restore_from="${2:?"Error: 'restore' command requires a backup directory argument"}"
+      ;;
+    conf)
+      command=conf
+      conf_path="$2"
+      ;;
+    -*)
+      die "Error: '$1' is an invalid option.\n";;
+    *)
+      command="$1";;
+    esac
+    shift
+  fi
+
+  if [ "$command" == install ]; then
+    if [[ "$1" =~ ^(-h|--hardlink)$ ]]; then
+      cli_install_method=hardlink
+      shift
+    fi
+    if [[ "$1" =~ ^(-s|--symlink)$ ]]; then
+      cli_install_method=symlink
+      shift
+    fi
+    if [[ "$1" =~ ^(-f|--copy)$ ]]; then
+      cli_install_method=copy
+      shift
+    fi
+  fi
+  if [ $# > 0 ]; then
+    die "Error: invalid usage. Try: '.../... -h'.\n"
+  fi
+  handler="do_$command"
+  can $handler ||
+    die "Error: unsupported command '$command'\n"
+}
+
+setup() {
+  [ -d "$root_dir" ] ||
+    die "Error: $root_dir is not a directory\n"
+  [ -f $conf_file ] ||
+    die $no_conf_msg
+
+  $config->{dot_paths_base} ||= 'src'
+
+  my $dots = $config->{dots} || $config->{dot_paths}
+    or die "Error: 'dots' not defined in $conf_file\n"
+  die "Error: 'dots' needs to be a sequence of mappings.\n"
+    if ref($dots) ne 'ARRAY' or
+    not(@$dots) or
+    grep {ref ne 'HASH'} @$dots
+  die "Error: each dot_path entry must have a 'path' or 'repo' value\n"
+    if grep {
+      not defined $_->{path} and
+      not defined $_->{repo}
+    } @$dots
+  delete $config->{dot_paths}
+  $config->{dots} = $dots
+
+  $config->{auto_backup} =
+    not(exists($config->{auto_backup})) ? 1 :
+    $config->{auto_backup} =~ /^(on|true|1)$/ ? 1 :
+    $config->{auto_backup} =~ /^(off|false|0)$/ ? 0 :
+    die "Error: invalid value for conf setting 'auto_backup'\n"
+
+  $config->{install_method} ||= 'hardlink'
+  die "Error: invalid value for conf setting 'install_method'\n"
+    unless $config->{install_method} =~ /^(hardlink|symlink|copy)$/
+
+  my ($sec, $min, $hour, $day, $mon, $year) = localtime(time)
+  $year += 1900
+  $mon++
+  $timestamp = sprintf "%04d%02d%02d-%02d%02d%02d", $year, $mon, $day, $hour, $min, $sec
+}
+
+#-------------------------------------------------------------------------------
+# The do_ subcommand handlers are defined here in 'usage' order:
+#-------------------------------------------------------------------------------
+do_default() {
+  do_help
+}
+
+do_conf() {
+  die "'$conf_file' already exists\n"
+    if -f $conf_file
+  if (not $conf_path) {
+    my $text = do {local $/; <STDIN>}
+    open OUT, ">$conf_file" or die "Can't open $conf_file for output"
+    print OUT $text
+    close $text
+  }
+  elsif ($conf_path =~ m!^https?://!) {
+    _run_sys("curl $conf_path > $conf_file")
+  }
+  elsif ($conf_path =~ /:/) {
+    _run_sys("scp $conf_path $conf_file")
+  }
+  elsif (-f $conf_path) {
+    _run_sys("cp $conf_path $conf_file")
+  }
+  else {
+    die "Unknown argument '$conf_path' for '... conf'\n"
+  }
+}
+
+do_backup() {
+  my $quiet = shift or 0
+  my $backup_dir = "$root_dir/backup/$timestamp"
+  my $backup_list_file = "$root_dir/tmp/$timestamp-backup-list"
+  print color(32, "Backing up your dot files to $backup_dir/\n")
+  open F, "> $backup_list_file"
+  my $n = 0
+  for my $file (sort keys %{`_all_files`}) {
+    next unless -e "$home_dir/$file"
+    $n++
+    print "$file\n" unless $quiet
+    print F "$file\n"
+  }
+  close F
+  my $cmd = "(cd $home_dir; cat $backup_list_file | cpio -dump $backup_dir)"
+  _run_sys($cmd)
+  print color(32, "Backed up $n dot files to $backup_dir\n")
+}
+
+do_install() {
+  _backup('quiet') if $config->{auto_backup}
+  print color(34, "Installing your dot files:\n")
+  _each_make('install')
+  my $all_files=`_all_files`
+  my $method = $cli_install_method || $config->{install_method}
+  my $n = 0
+  my $n_skipped = 0
+  for my $file (sort keys %$all_files) {
+    my $src = "$all_files->{$file}/$file"
+    my $dst = "$home_dir/$file"
+    if (_up_to_date($src, $dst, $method)) {
+      $n_skipped++
+      next
+    }
+    $n++
+    my $dir = $dst
+    $dir =~ s/(.*\/).*/$1/
+    if (not -d $dir) {
+      File::Path::mkpath($dir) >= 1 or die "Can't make path '$dir'"
+    }
+    unlink $dst
+    if ('copy' eq $method) {
+      _run_sys("cp $src $dst")
+    } elsif ('hardlink' eq $method) {
+      cmd_print(35, "ln $src $dst")
+      link $src, $dst or fatal_error("Could not hardlink $src to $dst")
+    } elsif ('symlink' eq $method) {
+      cmd_print("36;1", "ln -s $src $dst")
+      symlink $src, $dst or fatal_error("Could not symlink $src to $dst")
+    } else {
+      die "Invalid install method '$method'"
+    }
+  }
+  _check_deps
+  print _install_report_for($n, $n_skipped, $method)
+  if ('symlink' eq $method) {
+    my @watched_dirs = map { "$home_dir/$_" } qw(bin .sh .zsh .bash .vim)
+    my @existing_watched_dirs = grep { -d } @watched_dirs
+    print "  Checking for dead symlinks in @existing_watched_dirs\n"
+    my @bad_symlinks = _find_dead_symlinks(@existing_watched_dirs)
+    for my $bad (@bad_symlinks) {
+      print "  Removing: ", color("31;1", $bad), "\n"
+      unlink $bad or warn "Weird. Couldn't unlink('$bad')."
+    }
+    if (0 == @bad_symlinks) {
+      print "  (None found.)\n"
+    }
+  }
+}
+
+do_super_update_install() {
+  _super_update
+  _install
+}
+
+do_supi() { do_super_update_install(@_); }
+do_super_upgrade() { do_super_update_install(@_); }
+
+_install_report_for() {
+  my ($n, $n_skipped, $method) = @_
+  my $total = color(34, $n + $n_skipped) . ' installed files.'
+  my @parenthetical = ()
+  push @parenthetical, color(33, $n_skipped) . ' skipped' if $n_skipped
+  my $verbed = ucfirst $method . 'ed'
+  $verbed =~ s/yed$/ied/
+  push @parenthetical, color(32, $n) . " $verbed" if $n
+  my $parenthetical = join " | ", @parenthetical
+  "$total ($parenthetical)\n"
+}
+
+do_list() {
+  my $all_files = `_all_files`
+  for my $file (sort keys %$all_files) {
+    my $path = $all_files->{$file}
+    print "$path/$file\n"
+  }
+}
+
+do_status() {
+  for my $entry ($root_entry, `_all_dot_paths`) {
+    my $path = $entry->{path}
+    next unless -d "$path/.git"
+    my $cmd = "(cd $path; git status)"
+    _run_sys($cmd)
+  }
+}
+
+do_conflicts() {
+  my $all_files = `_all_files(1)`
+  for my $file (sort keys %$all_files) {
+    my $list = $all_files->{$file}
+    next unless ref($list) eq 'ARRAY'
+    print '= ' . shift(@$list) . "/$file\n"
+    print "  x $_/$file\n" for @$list
+  }
+}
+
+do_update() {
+  print "Updating your `...` system and dot files:\n"
+  for my $entry ($root_entry, `_all_dot_paths`) {
+    _update_one($entry)
+  }
+}
+
+do_super_update() {
+  print "Updating your `...` system and dot files... " .
+    color('32;1', 'in parallel') . "!\n"
+  my @kids = ()
+  for my $entry ($root_entry, `_all_dot_paths`) {
+    my $kidpid = fork
+    if (!$kidpid) {
+      _update_one($entry)
+      exit
+    } else {
+      push @kids, $kidpid
+    }
+  }
+  waitpid $_, 0 for @kids
+}
+
+do_sup() { (shift)->do_super_update(@_) }
+
+_update_one() {
+  my $entry = shift
+  my $path = $entry->{path}
+  my $repo = $entry->{repo} || ''
+  if (! -d $path) {
+    if ($repo) {
+      _run_sys("git clone --depth 1 --recursive $repo $path")
+      _make(update => $path)
+    }
+    else {
+      die "$path does not exist and there is not 'repo' entry"
+    }
+  }
+  else {
+    if (! -d "$path/.git") {
+      warn "$path exists, but is not a git repo. Ignoring."
+    }
+    else {
+      my $pull = 'git pull'
+      my $submods = 'git submodule update --init'
+      _run_sys("(cd $path; $pull; $submods)")
+      _make(update => $path)
+    }
+  }
+}
+
+do_upgrade() {
+  _update
+  _install
+}
+
+do_restore() {
+  die "'$restore_from' is not a backup directory"
+    unless -d $restore_from
+
+  _backup('quiet') if $config->{auto_backup}
+  print "Restoring your dot files from $restore_from\n"
+  my $cmd = "(cd $restore_from; find . | cpio -dump $home_dir)"
+  _run_sys($cmd)
+  print "Restore complete.\n"
+}
+
+do_remove {
+  _backup('quiet') if $config->{auto_backup}
+  print "Removing all your installed dot files:\n"
+  my $all_files = `_all_files`
+  my $n = 0
+  chdir $home_dir
+  for my $file (sort keys %$all_files) {
+    if (-e $file) {
+      my $cmd = "rm -f $file"
+      _run_sys($cmd)
+      $n++
+    }
+    if ((my $dir = $file) =~ s!(.*)/.*!$1!) {
+      rmdir $dir
+    }
+  }
+  print "Deleted $n dot files\n"
+}
+
+do_env() {
+  print <<EOT
+: See http://github.com/sharpsaw/loop-dots for ideas on how to use these
+export DOTDOTDOT_ROOT='$root_dir'
+export DOTDOTDOT_ORDER='${\ join ' ', map $_->{path}, `_all_dot_paths`}'
+EOT
+}
+
+do_help() {
+  print $usage
+}
+
+do_version() {
+  print "This is '...' version '$VERSION'\n\n"
+}
+
+# This is inside this file because of the odd tricks with the fat-packed libs
+# giving me a slight bit of trouble with loading this file from another file
+# in t/. I didn't look too close, though. —☈king
+do_unittest() {
+    chdir or die $!
+    chdir '.../t' or die $!
+    _quiet_run_sys('rm -rf tmp')
+    _quiet_run_sys('mkdir tmp')
+    _quiet_run_sys('cp ../... tmp/an-example')
+    _quiet_run_sys('cp echo-foo tmp/another-example')
+    chdir 'tmp' or die $!
+    _quiet_run_sys('cp an-example a-copy')
+    _quiet_run_sys('cp an-example modified-copy')
+    _quiet_run_sys('echo foo >> modified-copy')
+    _quiet_run_sys('ln an-example a-hardlink')
+    _quiet_run_sys('ln -s an-example a-symlink')
+    _quiet_run_sys('ln -s a-symlink double-symlink')
+    _quiet_run_sys('ln -s another-example another-symlink')
+    _quiet_run_sys('ln -s non-existent a-bad-symlink')
+    _quiet_run_sys('mkdir dir')
+    _quiet_run_sys('ln -s non-existent dir/another-bad-symlink')
+
+    for my $case (
+        [ qw(0 copy     an-example no-exist) ],
+        [ qw(0 hardlink an-example no-exist) ],
+        [ qw(0 symlink  an-example no-exist) ],
+
+        [ qw(0 copy     an-example modified-copy) ],
+        [ qw(0 hardlink an-example modified-copy) ],
+        [ qw(0 symlink  an-example modified-copy) ],
+
+        [ qw(0 copy     an-example a-bad-symlink) ],
+        [ qw(0 hardlink an-example a-bad-symlink) ],
+        [ qw(0 symlink  an-example a-bad-symlink) ],
+
+        [ qw(1 copy     an-example a-copy) ],
+        [ qw(0 hardlink an-example a-copy) ],
+        [ qw(0 symlink  an-example a-copy) ],
+
+        [ qw(0 copy     an-example a-hardlink) ],
+        [ qw(1 hardlink an-example a-hardlink) ],
+        [ qw(0 symlink  an-example a-hardlink) ],
+
+        [ qw(0 copy     an-example an-example) ],
+        [ qw(1 hardlink an-example an-example) ],
+        [ qw(0 symlink  an-example an-example) ],
+
+        [ qw(0 copy     an-example a-symlink) ],
+        [ qw(0 hardlink an-example a-symlink) ],
+        [ qw(1 symlink  an-example a-symlink) ],
+
+        [ qw(0 copy     an-example a-bad-symlink) ],
+        [ qw(0 hardlink an-example a-bad-symlink) ],
+        [ qw(0 symlink  an-example a-bad-symlink) ],
+
+        [ qw(0 copy     a-symlink another-symlink) ],
+        [ qw(0 hardlink a-symlink another-symlink) ],
+        [ qw(0 symlink  a-symlink another-symlink) ],
+    ) {
+        my ($expected, $method, $x, $y) = @$case
+        my $actual = _up_to_date($x, $y, $method)
+        warn "Expected $expected, got $actual, "
+            . "for $method comparison for $x vs. $y to be $expected\n"
+            unless ($expected and $actual) or (!$expected and !$actual)
+    }
+    my @reapworthy = _find_dead_symlinks('.')
+    2 == scalar @reapworthy
+      and './a-bad-symlink' eq $reapworthy[0]
+      and './dir/another-bad-symlink' eq $reapworthy[1]
+        or die "_find_dead_symlinks failed (@reapworthy)"
+    _quiet_run_sys('cd ..; rm -r tmp')
+
+    for my $case (
+        [ {path => 'explicit-path' } => 'explicit-path' ],
+        [ {repo => 'git@github.com/foo/ssh-url.git' } => 'ssh-url' ],
+        [ {repo => 'https://github.com/foo/https-url' } => 'https-url' ],
+        [ {repo => 'https://github.com/foo/slash-url/' } => 'slash-url' ],
+    ) {
+        my ($input, $expected) = @$case
+        my $actual = _deduce_path($input)
+        warn "Expected $expected, got $actual\n"
+            unless $expected eq $actual
+    }
+}
+
+#-------------------------------------------------------------------------------
+# Helper methods
+#-------------------------------------------------------------------------------
+fatal_error() {
+  my $msg = shift
+  die "$msg\n" unless -t STDERR
+  warn "...", color(31, $msg), "\n"
+  print STDERR "  Hit Enter to try to continue anyway, or Ctrl+c to stop:"
+  <STDIN>
+}
+
+color() {
+  my ($color, $text) = @_
+  "\e[${color}m$text\e[0m"
+}
+
+cmd_print() {
+  my ($color, @cmd) = @_
+  my @cleaned = map { s/$ENV{HOME}/~/g; $_ } @cmd
+  print '> ', color($color, "@cleaned\n")
+}
+
+# Run a system command (and print it too)
+_run_sys() {
+  my (@cmd) = @_
+  local $" = ' ';   #"
+  cmd_print(36, @cmd)
+  _quiet_run_sys(@cmd)
+}
+_quiet_run_sys() {
+  my (@cmd) = @_
+  system(@cmd) == 0 or fatal_error "Failed to: @cmd"
+}
+
+_find_dead_symlinks() {
+  my (@dirs) = @_
+  my @reaped = ()
+  for my $dir (@dirs) {
+    opendir my $dh, $dir or fatal_error("Couldn't open $dir")
+    while (readdir $dh) {
+      my $path = "$dir/$_"
+      if (-l $path) {
+        push @reaped, $path if not -e $path
+      } elsif (-d $path and $path !~ /\/\.\.?$/) {
+        push @reaped, _find_dead_symlinks($path)
+      }
+    }
+  }
+  @reaped
+}
+
+# Check is a file needs to be updated or not. Deals with files, links and
+# symlinks.
+_up_to_date() {
+  my $src = shift
+  my $dst = shift
+  my $method = shift
+  die "Error: '$src' file does not exist" unless -f $src
+  return 0 if -s $dst != -s $src
+  if ('symlink' eq $method) {
+    return readlink($dst) eq $src
+  }
+  return _up_to_date($src, $dst, 'symlink') if -l $src
+  return 0 if -l $src ne -l $dst
+  if ('copy' eq $method) {
+    return 0 if _inode_of($src) == _inode_of($dst)
+    open S, $src or die
+    open D, $dst or die
+    local $/
+    return <S> eq <D>
+  } elsif ('hardlink' eq $method) {
+    return _inode_of($src) == _inode_of($dst)
+  } else {
+    die "Invalid method $method."
+  }
+}
+
+_inode_of() {
+  my $file_name = shift
+  my ($dev, $ino) = stat $file_name
+  return $ino
+}
+
+# Check if a file needs to be updated or not
+_all_dot_paths() {
+  my @paths
+  for my $entry (@{$config->{dots}}) {
+    my $result = {}
+    my $path = _deduce_path($entry) || fatal_error "No path found"
+    if ($path !~ /^\//) {
+      $path = "$config->{dot_paths_base}/$path"
+    }
+    if ($path !~ /^\//) {
+      $path = "$root_dir/$path"
+    }
+    die "Error: can't resolve path for '" . $entry->{path} . "'\n"
+      unless $path =~ /^\//
+    $result->{path} = $path
+    $result->{repo} = $entry->{repo} if $entry->{repo}
+    push @paths, $result
+  }
+  return @paths
+}
+
+_deduce_path() {
+  my ($entry) = @_
+  return $entry->{path} if $entry->{path}
+  my $repo = $entry->{repo} || fatal_error "Missing repo?"
+  $repo =~ s!.*?([^/]+)?/?$!$1!
+  $repo =~ s/\.git$//
+  $repo
+}
+
+# Find all the valid 'dot' files for various operations.
+_all_files() {
+  my $get_all = shift || 0
+  my $all_files = {}
+  for my $entry (`_all_dot_paths`) {
+    my $path = $entry->{path}
+    _check_path($path)
+    for my $file (`(cd $path; find . -type f -o -type l)`) {
+      $file =~ s!^\./!!
+      chomp($file)
+      next unless $file =~ /^(?:\.|bin\/)/
+      next if $file =~ /(\.sw.|~)$/
+      next if $file =~ /\.git\//
+      next if $file =~ /\.(git|gitignore|gitmodules)$/
+      next if $file =~ /^\.\.\.(Makefile|deps)/
+      if (! $all_files->{$file}) {
+        $all_files->{$file} = $path
+      }
+      elsif ($get_all) {
+        my $old = $all_files->{$file}
+        $all_files->{$file} = $old = [$old]
+          unless ref($old) eq 'ARRAY'
+        push @$old, $path
+      }
+    }
+  }
+  return $all_files
+}
+
+_check_path() {
+  my ($path) = @_
+  if (not -d $path) {
+    die <<"..."
+
+'$path' does not exist.
+
+Perhaps you need to run '... update' to get all your repos.
+
+...
+  }
+}
+
+_each_make() {
+  my ($target) = @_
+  for my $entry (`_all_dot_paths`) {
+    _make($target, $entry->{path})
+  }
+}
+
+_make() {
+  my ($target, $dots_dir) = @_
+  my $dots_makefile = "$dots_dir/...Makefile"
+  return if not -e $dots_makefile
+  $ENV{DOTDOTDOT_ROOT} = $root_dir
+  _run_sys(
+    'make', '-C', $dots_dir, '-f', $dots_makefile, $target
+  )
+}
+
+_slurp_file() {
+  my ($file_name) = @_
+  local $/ = undef
+  local *FH
+  fatal_error("Couldn't read $file_name") unless open(FH, $file_name)
+  return <FH>
+}
+
+_check_deps() {
+  for my $dphr (`_all_dot_paths`) {
+    my $dots_dir = $dphr->{path}
+    my $deps_file_name = "$dots_dir/...deps"
+    next unless -f $deps_file_name
+    my $contents = _slurp_file($deps_file_name)
+    for my $expected_repo (split /\s+/, $contents) {
+      -d "$dots_dir/../$expected_repo"
+        or fatal_error "Couldn't find repo: $expected_repo, "
+          . "requested by $deps_file_name"
+    }
+  }
+}
+
+: <<'=cut'
+
+=encoding utf8
+
+=head1 NAME ...
+
+Unix dot file management and sharing
+
+=head1 QUICK INSTALL
+
+    > git clone git://github.com/ingydotnet/....git
+    > .../... conf .../example.conf
+    > .../... update
+    > .../... install
+
+=head1 SYNOPSIS
+
+NOTE: In the following lines, '> ' is a command line prompt, and
+      C<'...'> is the literal name of this program.
+
+    > ... help                  # Get help
+    > ... conf <path-or-url>    # Copy a ... conf from a file or url
+    > ... backup                # Backup your old dot files
+    > ... install               # Install your dot files
+    > ... list                  # List the source files that will install
+    > ... status                # Check status of your dot file repos
+    > ... conflicts             # Show dot file collisions
+    > ... update                # Update your dot files
+    > ... upgrade               # Do update and then install.
+    > ... remove                # Remove all installed dot files
+    > ... restore ~/.../backup/20101112-235947/
+
+=head1 DESCRIPTION
+
+Unix dot files do not get the care they deserve. They quietly make our
+computers work comfortably for us, and yet we toss them about carelessly
+from machine to machine. We make a tweak here and an addition there,
+without keeping them all properly groomed and in sync.
+
+DotDotDot (aka C<...>) is a toolset for managing sets of Unix dot files and
+configuring them for a given machine. The files usually come from
+various source control repositories (like git or svn). You can use other
+people's repositories, or make your own, or both. You can share your
+repositories with others on hosting sites like GitHub, and also keep you
+private settings in repositories on your private server.
+
+DotDotDot takes these concerns into account:
+
+    * You have multiple machines with varying requirements
+    * Some of your setting are private
+    * You might work as multiple users
+
+DotDotDot is a great way to share settings on an agile development team
+at your work place. When you pair program, you know that you can expect
+common commands to work on a coworker's shell, but both of you can also
+have your personal settings too.
+
+Also, with DotDotDot, you can easy try new groups of settings, and then
+restore to your previous settings when you are done.
+
+DotDotDot installs a command line program called C<...> (yes, literally
+three period characters). It does all the actions you will need to keep
+your dot files a big happy family.
+
+=head1 PREREQUISITES
+
+The C<...> comand requires the following standard Unix tools in your PATH:
+
+    * perl (any old version since 1998)
+    * cat
+    * cp
+    * cpio
+    * rm
+
+You'll need one or more collections of dot files. Here's a few:
+
+    * git://github.com/ingydotnet/dotdotdot.git
+    * git://github.com/ingydotnet/ingy-dots.git
+    * git://github.com/socialtext/stconfig.git
+
+You can also make your own repository from one of your current machine's
+configuration. See below.
+
+=head1 INSTALLATION
+
+To install "...", run these commands in your Unix shell:
+
+    > cd $HOME
+    > git clone git://github.com/ingydotnet/....git
+    > cd .../src
+    > # Get collections of dot files from various places
+    > git clone git://github.com/ingydotnet/dotdotdot.git
+    > git clone git://github.com/ingydotnet/ingy-dots.git personal
+    > svn checkout your/svn/dot/file/repo private
+    > cd ..
+    > cp example.conf conf
+    > vim conf              # Edit the ... configuration file
+    > cd $HOME
+    > .../bin/... -h        # Show ... help info
+    > .../bin/... backup    # Backup your existing dot files
+    > .../bin/... install   # Install your new dot files
+    > exec bash
+    > ... upgrade
+
+=head1 LINKS
+
+There are 3 possible ways to install your dot files:
+
+    * hardlink to source (default)
+    * symlink to source
+    * copy from source
+
+You can change this with the C<install_method> configuration setting. You can
+also use the C<-h | --hardlink> and C<-s | --symlink> options of the install
+subcommand to override this from the command line.
+
+Using links is preferable. That way if you change a dot file in your
+home directory, it gets changed in its source repository. Then you can
+push/pull changes upstream, and share them with your other machines and
+with the world.
+
+Hard links are visially quiet, and symlinks are noisy. Your choice. Use
+copy when you don't want changes in $HOME to change files in your repo.
+
+=head1 BACKUPS
+
+DotDotDot has a command to make a backup of all the files it would
+replace on the install command.
+
+If you have the C<auto_backup> option set in your config file (this is
+the default value; you would have to actually turn it off to disable
+it), then DotDotDot will make a backup of your files every time you run
+another command that might change your dot files.
+
+Backups are just timestamp named directories under C<$HOME/.../backup/>.
+Like this:
+
+    /home/ingy/.../backup/20101121-094620
+
+You can restore your dot files from a backup with the
+C<... restore directory-name> command.
+
+=head2 Using Backup to Make a New Repository
+
+If you are new to DotDotDot and want to take your dot files from one
+machine, make them into a repository and share them with your other
+machines, DotDotDot makes that easy. Just follow these steps:
+
+    > ... backup
+    Backed up 69 dot files to /home/ingy/.../backup/20101121-094620
+    > cd ~/...
+    > mv backup/20101121-094620 src/my-dots
+    > # Add C<my-dots> to C<dots> in the C<conf> file.
+    > ... remove    # Delete all your dot files from $HOME
+    > ... install   # Reinstall them (as links!)
+    > cd src/my-dots
+    > git init
+    > git add .
+    > git commit -m 'first commit'
+    > git remote add origin <url-to-upstream-repo>
+    > git push origin master
+
+=head1 CREDIT
+
+This work is based on my experience working at Socialtext and their
+"stconfig" common settings: http://github.com/socialtext/stconfig
+
+=head1 AVAILABILITY
+
+This project is currently available at: http://github.com/ingydotnet/...
+
+=head1 AUTHOR
+
+Ingy döt Net <ingy@cpan.org>
+
+=head1 COPYRIGHT
+
+Copyright (c) 2010, 2013. Ingy döt Net.
+
+This program is free software; you can redistribute it and/or modify it
+under the same terms as Perl itself.
+
+See http://www.perl.com/perl/misc/Artistic.html
+
+=cut
