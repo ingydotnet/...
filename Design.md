@@ -61,10 +61,15 @@ ideas:
    pretty ubiquitous. Will hold off for now. Having it a clone/run install is
    better than putting on CPAN imho, as this is targeted at new machines. plenv
    is an example of a Perl tool written in Bash.
+
 2) Support plugins for commands.
+
 3) Move from yaml to ini based conf.
+
 4) Move to a git based backup system. This would be a big win imho.
+
 5) Make loop-dots more robust and support more conf types.
+
 6) Make symlinks be the default (maybe only) install_method. From experience,
    symlinks are the best method. (vs copy or hardlink).
 
