@@ -400,7 +400,7 @@ sub _update_one {
         else {
             my $pull = 'git pull';
             my $submods = 'git submodule update --init';
-            $class->_run_sys("(cd $path; $pull; $submods)");
+            $class->_run_sys("(cd $path && $pull && $submods)");
             $class->_make(update => $path);
         }
     }
