@@ -672,7 +672,7 @@ sub _all_files {
     for my $entry ($class->_all_dot_paths) {
         my $path = $entry->{path};
         $class->_check_path($path);
-        for my $file (`(cd $path; find . -type f -o -type l)`) {
+        for my $file (`(cd $path; find -L . -type f)`) {
             $file =~ s!^\./!!;
             chomp($file);
             next unless $file =~ /^(?:\.|bin\/)/;
