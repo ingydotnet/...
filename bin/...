@@ -607,7 +607,7 @@ sub _up_to_date {
     my $src = shift;
     my $dst = shift;
     my $method = shift;
-    die "Error: '$src' file does not exist" unless -f $src;
+    die "Error: '$src' file does not exist" unless -e $src;
     return 0 if -s $dst != -s $src;
     if ('symlink' eq $method) {
         return readlink($dst) eq $src
