@@ -1,13 +1,14 @@
-# Zsh and Bash are DecentShells™
+# Zsh and Bash are DecentShells™:
 [ -n "$ZSH_VERSION" ] && return 0
 [ -n "$BASH_VERSION" ] && [ "$$" == "$BASHPID" ] && return 0
 
-echo "Attempt to run from some shell ($SHELL) we don't support yet."
+# Else spew debug info for indecent shell:
 if type pstree >/dev/null 2>&1; then
-    pstree -h
+  pstree -h
 else
-    ps ajhf
+  ps ajhf
 fi
+echo "Attempt to run from some shell ($SHELL) we don't support yet."
 return 1
 
 # vim:ft=sh
