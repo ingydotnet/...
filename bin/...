@@ -384,9 +384,10 @@ sub _update_one {
     my $entry = shift;
     my $path = $entry->{path};
     my $repo = $entry->{repo} || '';
+    my $branch = $entry->{branch} ? " --branch $entry->{branch}" : '';
     if (! -d $path) {
         if ($repo) {
-            $class->_run_sys("git clone --depth 1 --recursive $repo $path");
+            $class->_run_sys("git clone$branch --depth 1 --recursive $repo $path");
             $class->_make(update => $path);
         }
         else {
@@ -650,6 +651,7 @@ sub _all_dot_paths {
             unless $path =~ /^\//;
         $result->{path} = $path;
         $result->{repo} = $entry->{repo} if $entry->{repo};
+        $result->{branch} = $entry->{branch} if $entry->{branch};
         push @paths, $result;
     }
     return @paths;
