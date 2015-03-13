@@ -55,7 +55,7 @@ DESCRIPTION
     your dot files a big happy family.
 
 PREREQUISITES
-    The "..." comand requires the following standard Unix tools in your
+    The "..." command requires the following standard Unix tools in your
     PATH:
 
         * perl (any old version since 1998)
