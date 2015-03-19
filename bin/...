@@ -28,9 +28,9 @@ Commands:
     restore   - Restore a backup.
     remove    - DELETE all the dot files in $HOME that would be installed!!!
     env       - Get input for a shell eval `... env`, useful for scripting.
-    super_update         - paralllel update
+    super_update         - parallel update
     sup                  - alias for super_update
-    super_update_install - paralllel update + install
+    super_update_install - parallel update + install
     supi                 - alias for super_update_install
     help      - Print this help and exit.
 
