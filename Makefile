@@ -1,3 +1,11 @@
+help:
+	@echo 'Targets: doc, test'
+
+doc: ReadMe.pod
+
+ReadMe.pod: doc/DotDotDot.swim
+	swim --to=pod --complete --wrap $< > $@
+
 test:
 	t=1; \
 	  for n in t/*.*sh; do \
