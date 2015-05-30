@@ -71,9 +71,9 @@ The `...` comand requires the following standard Unix tools in your PATH:
 
 You'll need one or more collections of dot files. Here's a few:
 
-* git://github.com/ingydotnet/dotdotdot.git
-* git://github.com/ingydotnet/ingy-dots.git
-* git://github.com/socialtext/stconfig.git
+* `git://github.com/ingydotnet/dotdotdot.git`
+* `git://github.com/ingydotnet/ingy-dots.git`
+* `git://github.com/socialtext/stconfig.git`
 
 You can also make your own repository from one of your current machine's
 configuration. See below.

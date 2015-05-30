@@ -94,11 +94,11 @@ You'll need one or more collections of dot files. Here's a few:
 
 =over
 
-=item * git:/I<github.com>ingydotnet/dotdotdot.git
+=item * C<git://github.com/ingydotnet/dotdotdot.git>
 
-=item * git:/I<github.com>ingydotnet/ingy-dots.git
+=item * C<git://github.com/ingydotnet/ingy-dots.git>
 
-=item * git:/I<github.com>socialtext/stconfig.git
+=item * C<git://github.com/socialtext/stconfig.git>
 
 =back
 
