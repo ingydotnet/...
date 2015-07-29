@@ -244,7 +244,7 @@ sub do_backup {
         print F "$file\n";
     }
     close F;
-    my $cmd = "(cd $home_dir; cat $backup_list_file | cpio -dump $backup_dir)";
+    my $cmd = "(cd $home_dir; mkdir $backup_dir && cat $backup_list_file | cpio -dump $backup_dir)";
     $class->_run_sys($cmd);
     print color(32, "Backed up $n dot files to $backup_dir\n");
 }
