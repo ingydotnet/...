@@ -1,6 +1,9 @@
 # Zsh and Bash are DecentShells™:
 [ -n "$ZSH_VERSION" ] && return 0
-[ -n "$BASH_VERSION" ] && [ "$$" == "$BASHPID" ] && return 0
+if [ -n "$BASH_VERSION" ]; then
+  [ -z "$BASHPID" ] && return 0
+  [ "$$" == "$BASHPID" ] && return 0
+fi
 
 # Else spew debug info for indecent shell:
 if type pstree >/dev/null 2>&1; then
