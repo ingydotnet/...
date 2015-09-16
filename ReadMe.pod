@@ -103,7 +103,8 @@ You'll need one or more collections of dot files. Here's a few:
 =back
 
 You can also make your own repository from one of your current machine's
-configuration. See below.
+configuration. See below.  Additionally, to allow using multiple dotfile repos
+at once, take a look at L<https://github.com/sharpsaw/loop-dots>
 
 =head1 Installation
 
